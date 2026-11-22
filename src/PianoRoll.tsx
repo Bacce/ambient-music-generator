@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { AmbientSequence } from "./service/midigen.ts";
-import { collectSequenceNotes } from "./service/midiPlayback.ts";
+import { collectSequenceNotes } from "./service/sequenceNotes.ts";
 
 const TRACK_COLORS = ["--c1", "--c2", "--c3", "--c4", "--c5"];
 

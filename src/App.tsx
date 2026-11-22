@@ -81,15 +81,22 @@ export const App = () => {
   const [drafts, setDrafts] = useState<Drafts>(INITIAL_DRAFTS);
   const [generated, setGenerated] = useState<GeneratedMidi | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const playback = useRef<PlaybackHandle | null>(null);
+  const playbackToken = useRef(0);
+  const starting = useRef(false);
   const toggleRef = useRef<() => void>(() => {});
 
-  useEffect(() => () => playback.current?.stop(), []);
+  useEffect(() => () => {
+    playbackToken.current += 1;
+    playback.current?.stop();
+  }, []);
 
   const stopPlayback = () => {
+    playbackToken.current += 1;
     playback.current?.stop();
     playback.current = null;
     setIsPlaying(false);
@@ -143,27 +150,48 @@ export const App = () => {
     }
   };
 
-  const togglePlayback = () => {
+  const togglePlayback = async () => {
     if (playback.current) {
       stopPlayback();
       return;
     }
 
-    if (!generated) return;
+    if (!generated || starting.current) return;
+
+    const token = ++playbackToken.current;
+
+    starting.current = true;
+    setIsPreparing(true);
+    setProgress(0);
 
     try {
-      playback.current = playSequence(generated.sequence, () => {
-        playback.current = null;
-        setIsPlaying(false);
-        setProgress(0);
-      });
-      setProgress(0);
+      const handle = await playSequence(
+        generated.sequence,
+        generated.bytes,
+        () => {
+          playback.current = null;
+          setIsPlaying(false);
+          setProgress(0);
+        },
+      );
+
+      if (token !== playbackToken.current) {
+        handle.stop();
+        return;
+      }
+
+      playback.current = handle;
       setIsPlaying(true);
       setError(null);
     } catch (reason) {
-      playback.current = null;
-      setIsPlaying(false);
-      setError(reason instanceof Error ? reason.message : String(reason));
+      if (token === playbackToken.current) {
+        playback.current = null;
+        setIsPlaying(false);
+        setError(reason instanceof Error ? reason.message : String(reason));
+      }
+    } finally {
+      starting.current = false;
+      setIsPreparing(false);
     }
   };
 
@@ -174,14 +202,16 @@ export const App = () => {
   useEffect(() => {
     if (!isPlaying) return;
 
-    const startedAt = performance.now();
-    const totalSeconds = playback.current?.durationSeconds ?? 0;
-
-    if (totalSeconds <= 0) return;
-
     const timer = setInterval(() => {
-      const elapsed = (performance.now() - startedAt) / 1000;
-      setProgress(Math.min(1, elapsed / totalSeconds));
+      const handle = playback.current;
+
+      if (!handle) return;
+
+      setProgress(
+        handle.durationSeconds > 0
+          ? Math.min(1, handle.currentTime / handle.durationSeconds)
+          : 0,
+      );
     }, 100);
 
     return () => clearInterval(timer);
@@ -361,8 +391,8 @@ export const App = () => {
           <div className="result-head">
             <p className="ready" role="status">
               {generated.options.duration}s in {generated.options.key} at{" "}
-              {generated.options.bpm} BPM, {generated.options.mood}
-              (seed {generated.sequence.seed})
+              {generated.options.bpm} BPM, {capitalize(generated.options.mood)}
+              {" "}(seed {generated.sequence.seed})
             </p>
             <span className="meta">{formatBytes(generated.bytes.length)} MIDI</span>
           </div>
@@ -373,10 +403,11 @@ export const App = () => {
             <button
               type="button"
               className="secondary"
-              onClick={togglePlayback}
+              onClick={() => void togglePlayback()}
               aria-pressed={isPlaying}
+              disabled={isPreparing}
             >
-              {isPlaying ? "Stop" : "Listen"}
+              {isPreparing ? "Loading…" : isPlaying ? "Stop" : "Listen"}
             </button>
             <button type="button" onClick={download}>Download MIDI</button>
           </div>

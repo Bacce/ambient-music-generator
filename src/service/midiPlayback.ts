@@ -1,164 +1,146 @@
+import { Sequencer, WorkletSynthesizer } from "spessasynth_lib";
 import type { AmbientSequence } from "./midigen.ts";
-
-interface Voice {
-    type: OscillatorType;
-    attack: number;
-    decay: number;
-    sustain: number;
-    release: number;
-    peak: number;
-}
-
-export interface SequenceNote {
-    start: number;
-    duration: number;
-    pitch: number;
-    velocity: number;
-    program: number;
-    track: number;
-}
-
-interface OpenNote {
-    tick: number;
-    velocity: number;
-}
 
 export interface PlaybackHandle {
     stop(): void;
-    durationSeconds: number;
+    readonly currentTime: number;
+    readonly durationSeconds: number;
+    readonly finished: boolean;
 }
 
-// General MIDI program → rough Web Audio substitute.
-const VOICES: Record<number, Voice> = {
-    0: { type: "triangle", attack: 0.005, decay: 1.2, sustain: 0.2, release: 0.4, peak: 0.55 },
-    10: { type: "sine", attack: 0.002, decay: 1, sustain: 0.08, release: 0.7, peak: 0.5 },
-    48: { type: "sawtooth", attack: 0.35, decay: 0.8, sustain: 0.45, release: 1.4, peak: 0.16 },
-    89: { type: "sine", attack: 0.8, decay: 1.5, sustain: 0.65, release: 2, peak: 0.35 },
-};
+interface PlaybackEngine {
+    context: AudioContext;
+    synth: WorkletSynthesizer;
+    sequencer: Sequencer;
+}
 
-const DEFAULT_VOICE: Voice = {
-    type: "triangle",
-    attack: 0.01,
-    decay: 0.8,
-    sustain: 0.4,
-    release: 0.6,
-    peak: 0.4,
-};
+const PROCESSOR_URL = "spessasynth_processor.min.js";
+const SOUNDFONT_URL = "soundfonts/GeneralUserGS.sf3";
+const LOAD_TIMEOUT_MS = 15000;
 
-export function collectSequenceNotes(
-    sequence: AmbientSequence,
-): SequenceNote[] {
-    const secondsPerTick = 60 / (sequence.bpm * sequence.ticksPerBeat);
-    const notes: SequenceNote[] = [];
+function assetUrl(path: string): string {
+    return `${import.meta.env.BASE_URL}${path}`;
+}
 
-    for (const [trackIndex, track] of sequence.tracks.entries()) {
-        const events = [...track].sort(
-            (a, b) => a.tick - b.tick || a.priority - b.priority
+async function createEngine(): Promise<PlaybackEngine> {
+    const context = new AudioContext({ latencyHint: "playback" });
+
+    await context.audioWorklet.addModule(assetUrl(PROCESSOR_URL));
+
+    const synth = new WorkletSynthesizer(context);
+    synth.connect(context.destination);
+
+    const response = await fetch(assetUrl(SOUNDFONT_URL));
+
+    if (!response.ok) {
+        throw new Error(
+            `Could not load the soundfont (${response.status} ${response.statusText}).`
         );
-
-        const openNotes = new Map<number, OpenNote[]>();
-        let program = 0;
-
-        for (const { tick, data } of events) {
-            const [status, pitch, velocity] = data;
-            const kind = status & 0xf0;
-
-            if (kind === 0xc0) {
-                program = pitch;
-                continue;
-            }
-
-            if (kind !== 0x80 && kind !== 0x90) continue;
-
-            const key = (status & 0x0f) << 8 | pitch;
-
-            if (kind === 0x90 && velocity > 0) {
-                const open = openNotes.get(key);
-
-                if (open) open.push({ tick, velocity });
-                else openNotes.set(key, [{ tick, velocity }]);
-                continue;
-            }
-
-            const start = openNotes.get(key)?.shift();
-            if (!start) continue;
-
-            notes.push({
-                start: start.tick * secondsPerTick,
-                duration: (tick - start.tick) * secondsPerTick,
-                pitch,
-                velocity: start.velocity,
-                program,
-                track: trackIndex,
-            });
-        }
     }
 
-    return notes.sort((a, b) => a.start - b.start);
+    await synth.soundBankManager.addSoundBank(
+        await response.arrayBuffer(),
+        "generaluser",
+    );
+    await synth.isReady;
+    await context.resume();
+
+    return {
+        context,
+        synth,
+        sequencer: new Sequencer(synth, { skipToFirstNoteOn: true }),
+    };
 }
 
-export function playSequence(
+let enginePromise: Promise<PlaybackEngine> | null = null;
+
+function getEngine(): Promise<PlaybackEngine> {
+    if (!enginePromise) {
+        enginePromise = createEngine().catch(error => {
+            enginePromise = null;
+            throw error;
+        });
+    }
+
+    return enginePromise;
+}
+
+export async function playSequence(
     sequence: AmbientSequence,
+    midiBytes: Uint8Array<ArrayBuffer>,
     onEnded: () => void = () => {},
-): PlaybackHandle {
-    const notes = collectSequenceNotes(sequence);
+): Promise<PlaybackHandle> {
+    const { context, synth, sequencer } = await getEngine();
+
+    await context.resume();
+    synth.stopAll(true);
+
+    if (!sequencer.paused) sequencer.pause();
+
+    await new Promise<void>((resolve, reject) => {
+        const id = "ambient-load";
+        const cleanup = () => {
+            window.clearTimeout(timer);
+            sequencer.eventHandler.removeEvent("songChange", id);
+            sequencer.eventHandler.removeEvent("midiError", id);
+        };
+        const timer = window.setTimeout(() => {
+            cleanup();
+            reject(new Error("Timed out while loading the MIDI sequence."));
+        }, LOAD_TIMEOUT_MS);
+
+        sequencer.eventHandler.addEvent("songChange", id, () => {
+            cleanup();
+            resolve();
+        });
+        sequencer.eventHandler.addEvent("midiError", id, error => {
+            cleanup();
+            reject(error);
+        });
+
+        try {
+            sequencer.loadNewSongList([{
+                binary: midiBytes.slice().buffer,
+                fileName: "ambient.mid",
+            }]);
+        } catch (error) {
+            cleanup();
+            reject(error);
+        }
+    });
+
+    sequencer.play();
+
     const durationSeconds =
         sequence.totalTicks * 60 / (sequence.bpm * sequence.ticksPerBeat);
-    const startTime = 0.15;
+    let stopped = false;
+    let ended = false;
 
-    const context = new AudioContext();
-    const master = context.createGain();
-    master.gain.value = 0.22;
+    const watch = window.setInterval(() => {
+        if (!stopped && !ended && sequencer.isFinished) {
+            ended = true;
+            window.clearInterval(watch);
+            onEnded();
+        }
+    }, 200);
 
-    const compressor = context.createDynamicsCompressor();
-    compressor.threshold.value = -18;
-    compressor.ratio.value = 4;
-    compressor.attack.value = 0.005;
-    compressor.release.value = 0.25;
+    return {
+        stop() {
+            if (stopped) return;
 
-    master.connect(compressor).connect(context.destination);
-
-    for (const note of notes) {
-        const voice = VOICES[note.program] ?? DEFAULT_VOICE;
-        const start = context.currentTime + startTime + note.start;
-        const end = start + Math.max(note.duration, 0.05);
-        const peak = note.velocity / 127 * voice.peak;
-
-        const oscillator = context.createOscillator();
-        oscillator.type = voice.type;
-        oscillator.frequency.value = 440 * 2 ** ((note.pitch - 69) / 12);
-
-        const envelope = context.createGain();
-        envelope.gain.setValueAtTime(0.0001, start);
-        envelope.gain.linearRampToValueAtTime(peak, start + voice.attack);
-        envelope.gain.setTargetAtTime(
-            peak * voice.sustain,
-            start + voice.attack,
-            voice.decay / 3
-        );
-        envelope.gain.setTargetAtTime(0.0001, end, voice.release / 4);
-
-        oscillator.connect(envelope).connect(master);
-        oscillator.start(start);
-        oscillator.stop(end + voice.release * 2);
-    }
-
-    let finished = false;
-
-    const timer = setTimeout(
-        () => finish(true),
-        (durationSeconds + startTime + 1) * 1000
-    );
-
-    function finish(notify: boolean): void {
-        if (finished) return;
-        finished = true;
-        clearTimeout(timer);
-        void context.close().catch(() => {});
-        if (notify) onEnded();
-    }
-
-    void context.resume().catch(() => {});
-
-    return { stop: () => finish(true), durationSeconds };
+            stopped = true;
+            window.clearInterval(watch);
+            sequencer.pause();
+            synth.stopAll(true);
+        },
+        get currentTime() {
+            return Math.min(sequencer.currentHighResolutionTime, durationSeconds);
+        },
+        get durationSeconds() {
+            return durationSeconds;
+        },
+        get finished() {
+            return ended || stopped || sequencer.isFinished;
+        },
+    };
 }
