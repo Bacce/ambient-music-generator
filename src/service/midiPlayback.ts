@@ -9,12 +9,13 @@ interface Voice {
     peak: number;
 }
 
-interface Note {
+export interface SequenceNote {
     start: number;
     duration: number;
     pitch: number;
     velocity: number;
     program: number;
+    track: number;
 }
 
 interface OpenNote {
@@ -44,11 +45,13 @@ const DEFAULT_VOICE: Voice = {
     peak: 0.4,
 };
 
-function collectNotes(sequence: AmbientSequence): Note[] {
+export function collectSequenceNotes(
+    sequence: AmbientSequence,
+): SequenceNote[] {
     const secondsPerTick = 60 / (sequence.bpm * sequence.ticksPerBeat);
-    const notes: Note[] = [];
+    const notes: SequenceNote[] = [];
 
-    for (const track of sequence.tracks) {
+    for (const [trackIndex, track] of sequence.tracks.entries()) {
         const events = [...track].sort(
             (a, b) => a.tick - b.tick || a.priority - b.priority
         );
@@ -86,6 +89,7 @@ function collectNotes(sequence: AmbientSequence): Note[] {
                 pitch,
                 velocity: start.velocity,
                 program,
+                track: trackIndex,
             });
         }
     }
@@ -97,7 +101,7 @@ export function playSequence(
     sequence: AmbientSequence,
     onEnded: () => void = () => {},
 ): PlaybackHandle {
-    const notes = collectNotes(sequence);
+    const notes = collectSequenceNotes(sequence);
     const durationSeconds =
         sequence.totalTicks * 60 / (sequence.bpm * sequence.ticksPerBeat);
     const startTime = 0.15;
