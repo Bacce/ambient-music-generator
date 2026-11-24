@@ -18,6 +18,9 @@
   --c3: #b06a32;
   --c4: #9a4d8f;
   --c5: #6f8f4f;
+  --c6: #3e6f9e;
+  --c7: #a34b5f;
+  --c8: #8a7a3f;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -44,6 +47,9 @@
     --c3: #e0a06b;
     --c4: #d38cc8;
     --c5: #a8c77a;
+    --c6: #7cb3e6;
+    --c7: #e58a9c;
+    --c8: #d4c17a;
   }
 }
 
@@ -106,7 +112,8 @@ form {
 }
 
 .field input,
-.field select {
+.field select,
+.seed-field input {
   width: 100%;
   font: inherit;
   font-weight: 400;
@@ -117,27 +124,131 @@ form {
   color: inherit;
 }
 
-.seed-control {
-  display: flex;
-  gap: 0.4rem;
+.seed-field {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
-.seed-control input {
+.seed-field input {
+  width: 8.5rem;
+}
+
+.variation-field .field-value {
+  margin-left: 0.35rem;
+  color: var(--muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.field input[type="range"] {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.instrument-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.instrument-search {
+  flex: 1 1 13rem;
   min-width: 0;
-  flex: 1;
+  font: inherit;
+  font-size: 0.88rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--input-border);
+  border-radius: 0.4rem;
+  background: var(--input);
+  color: inherit;
+}
+
+.instrument-count {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.8rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.chip:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.chip span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.instrument-groups {
+  max-height: 24rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.instrument-family + .instrument-family {
+  margin-top: 0.85rem;
+}
+
+.instrument-family h3 {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .instrument-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.35rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: 0.25rem 0.9rem;
 }
 
 .instrument {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.instrument.blocked {
+  opacity: 0.45;
+}
+
+.instrument.blocked input {
+  cursor: not-allowed;
 }
 
 input[type="checkbox"] {
@@ -147,6 +258,7 @@ input[type="checkbox"] {
 .actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-end;
   justify-content: center;
   gap: 0.75rem;
   margin-top: 0.25rem;
@@ -230,6 +342,11 @@ progress:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+.instrumentation {
+  margin: 0;
+  line-height: 1.4;
+}
+
 .piano-roll {
   display: block;
   width: 100%;
@@ -237,6 +354,36 @@ progress:focus-visible {
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   background: var(--surface-soft);
+}
+
+.volume-row {
+  display: flex;
+  justify-content: center;
+}
+
+.volume-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 20rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.volume-field input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.volume-value {
+  min-width: 3.2em;
+  text-align: right;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
 }
 
 .progress-row {
@@ -250,8 +397,26 @@ progress:focus-visible {
 
 .progress-row progress {
   flex: 1;
-  height: 0.5rem;
+  height: 0.45rem;
+  border: none;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-soft);
   accent-color: var(--accent);
+}
+
+.progress-row progress::-webkit-progress-bar {
+  background: var(--surface-soft);
+}
+
+.progress-row progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.progress-row progress::-moz-progress-bar {
+  background: var(--accent);
+  border-radius: 999px;
 }
 
 .error {

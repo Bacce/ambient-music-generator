@@ -1,8 +1,27 @@
 import { useEffect, useRef } from "react";
 import type { AmbientSequence } from "./service/midigen.ts";
-import { collectSequenceNotes } from "./service/midiPlayback.ts";
+import { collectSequenceNotes } from "./service/sequenceNotes.ts";
 
-const TRACK_COLORS = ["--c1", "--c2", "--c3", "--c4", "--c5"];
+const TRACK_COLORS = [
+    "--c1",
+    "--c2",
+    "--c3",
+    "--c4",
+    "--c5",
+    "--c6",
+    "--c7",
+    "--c8",
+];
+const FALLBACK_COLORS = [
+    "#7c6fd6",
+    "#4f8f8b",
+    "#c58b5a",
+    "#a46a9e",
+    "#6f8f4f",
+    "#5a7fb0",
+    "#b05a70",
+    "#8a7a45",
+];
 
 interface PianoRollProps {
     sequence: AmbientSequence;
@@ -15,7 +34,9 @@ export const PianoRoll = ({ sequence }: PianoRollProps) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        const notes = collectSequenceNotes(sequence);
+        const allNotes = collectSequenceNotes(sequence);
+        const melodicNotes = allNotes.filter(note => note.channel !== 9);
+        const notes = melodicNotes.length > 0 ? melodicNotes : allNotes;
         const duration =
             sequence.totalTicks * 60 / (sequence.bpm * sequence.ticksPerBeat);
         const pitches = notes.map(note => note.pitch);
@@ -42,7 +63,7 @@ export const PianoRoll = ({ sequence }: PianoRollProps) => {
                 styles.getPropertyValue(name).trim() || fallback;
             const grid = readColor("--grid", "rgba(128, 128, 128, 0.15)");
             const palette = TRACK_COLORS.map((name, index) =>
-                readColor(name, ["#7c6fd6", "#4f8f8b", "#c58b5a", "#a46a9e", "#6f8f4f"][index])
+                readColor(name, FALLBACK_COLORS[index])
             );
 
             context.setTransform(ratio, 0, 0, ratio, 0, 0);

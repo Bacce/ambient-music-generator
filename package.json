@@ -4,14 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/sync-spessasynth.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/sync-spessasynth.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "spessasynth_lib": "^4.4.10"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
