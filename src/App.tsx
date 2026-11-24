@@ -125,6 +125,7 @@ export const App = () => {
   const starting = useRef(false);
   const toggleRef = useRef<() => void>(() => { });
   const exportToken = useRef(0);
+  const seeking = useRef(false);
 
   useEffect(() => () => {
     playbackToken.current += 1;
@@ -134,6 +135,7 @@ export const App = () => {
 
   const stopPlayback = () => {
     playbackToken.current += 1;
+    seeking.current = false;
     playback.current?.stop();
     playback.current = null;
     setIsPlaying(false);
@@ -277,6 +279,8 @@ export const App = () => {
 
       if (!handle) return;
 
+      if (seeking.current) return;
+
       setProgress(
         handle.durationSeconds > 0
           ? Math.min(1, handle.currentTime / handle.durationSeconds)
@@ -320,6 +324,17 @@ export const App = () => {
       new Blob([generated.bytes], { type: "audio/midi" }),
       generatedFilename(generated, "mid"),
     );
+  };
+
+  const seekPlayback = (event: ChangeEvent<HTMLInputElement>) => {
+    const handle = playback.current;
+
+    if (!handle) return;
+
+    const ratio = Number(event.target.value) / 100;
+
+    handle.seek(ratio * handle.durationSeconds);
+    setProgress(ratio);
   };
 
   const totalSeconds = generated
@@ -701,10 +716,19 @@ export const App = () => {
 
           {isPlaying && (
             <div className="progress-row">
-              <progress
+              <input
+                type="range"
+                min={0}
                 max={100}
+                step={0.1}
                 value={progress * 100}
-                aria-label="Playback progress"
+                onChange={seekPlayback}
+                onPointerDown={() => { seeking.current = true; }}
+                onPointerUp={() => { seeking.current = false; }}
+                onPointerCancel={() => { seeking.current = false; }}
+                onLostPointerCapture={() => { seeking.current = false; }}
+                aria-label="Playback position"
+                aria-valuetext={`${formatClock(progress * totalSeconds)} of ${formatClock(totalSeconds)}`}
               />
               <span>
                 {formatClock(progress * totalSeconds)} / {formatClock(totalSeconds)}

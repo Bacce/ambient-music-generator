@@ -4,6 +4,7 @@ import type { AmbientSequence } from "./midigen.ts";
 
 export interface PlaybackHandle {
     stop(): void;
+    seek(seconds: number): void;
     readonly currentTime: number;
     readonly durationSeconds: number;
     readonly finished: boolean;
@@ -149,6 +150,13 @@ export async function playSequence(
             window.clearInterval(watch);
             sequencer.pause();
             synth.stopAll(true);
+        },
+        seek(seconds) {
+            if (stopped) return;
+
+            const target = Math.min(Math.max(seconds, 0), durationSeconds);
+
+            sequencer.currentTime = target;
         },
         get currentTime() {
             return Math.min(sequencer.currentHighResolutionTime, durationSeconds);

@@ -419,6 +419,13 @@ progress:focus-visible {
   border-radius: 999px;
 }
 
+.progress-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .error {
   margin: 0;
   color: var(--error);
