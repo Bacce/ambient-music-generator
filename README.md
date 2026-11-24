@@ -1,32 +1,37 @@
-# React + TypeScript + Vite
+# Ambient Music Generator
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Browser-based ambient MIDI generator and player. Choose duration, tempo, key,
+style, mood, variation and instrumentation; the app composes layered parts,
+previews them with the General MIDI soundfont, and downloads a `.mid` file.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **9 styles** — ambient, cinematic, lo-fi, classical, jazz, electronic, folk,
+  minimal and drone. Each style supplies its own progressions, chord
+  extensions, swing, arpeggio/bass patterns, pad articulation, drum groove and
+  reverb character.
+- **4 moods** — peaceful, dreamy, nostalgic and mysterious alter the mode,
+  melodic material and harmonic color.
+- **Full General MIDI instrument catalog** — 128 melodic programs grouped by
+  family plus a drum kit. Up to 15 melodic instruments can be layered at once
+  (MIDI channel limit); the generator assigns roles automatically:
+  keys, pads, bass, plucked arpeggios, bells, lead melody, texture,
+  melodic percussion and drums.
+- **Variation control** — humanizes timing and velocity, adds ornaments,
+  phrase fills, dropouts and octave doublings.
+- **Arrangement** — parts enter in layers, energy shapes the intro/outro, and
+  the final bar resolves to the tonic before fading out.
+- **Live preview** — piano roll, realtime playback, progress and volume.
 
-## React Compiler
+## Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+npm install
+npm run dev      # start Vite
+npm run build    # type-check and build
+npm run preview  # serve the production build
+npm run lint
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Playback uses `spessasynth_lib` with `GeneralUserGS.sf3`; the worklet processor
+and soundfont are synced into `public/` by `scripts/sync-spessasynth.mjs`.

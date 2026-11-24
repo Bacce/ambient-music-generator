@@ -6,6 +6,7 @@ export interface SequenceNote {
     pitch: number;
     velocity: number;
     program: number;
+    channel: number;
     track: number;
 }
 
@@ -58,6 +59,7 @@ export function collectSequenceNotes(
                 pitch,
                 velocity: start.velocity,
                 program,
+                channel: status & 0x0f,
                 track: trackIndex,
             });
         }

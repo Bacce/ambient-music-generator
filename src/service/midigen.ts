@@ -2,6 +2,8 @@ const TICK_RATE = 480;
 const BEATS_PER_BAR = 4;
 const BAR = TICK_RATE * BEATS_PER_BAR;
 const MAX_DURATION_SECONDS = 600;
+export const MAX_MELODIC_INSTRUMENTS = 15;
+const DRUM_CHANNEL = 9;
 
 const KEYS = {
     C: 0, D: 2, Eb: 3, F: 5, G: 7, A: 9, Bb: 10,
@@ -24,24 +26,457 @@ const CHORDS = {
     bVII: [10, 14, 17],
 };
 
-const PROGRAMS = {
-    piano: 0,
-    pad: 89,
-    strings: 48,
-    musicbox: 10,
-};
-
 export type KeyName = keyof typeof KEYS;
 export type ChordName = keyof typeof CHORDS;
-export type Instrument = keyof typeof PROGRAMS;
+export type Instrument = string;
 export type Mood = "peaceful" | "dreamy" | "nostalgic" | "mysterious";
+export type Style =
+    | "ambient"
+    | "cinematic"
+    | "lofi"
+    | "classical"
+    | "jazz"
+    | "electronic"
+    | "folk"
+    | "minimal"
+    | "drone";
+export type Role =
+    | "keys"
+    | "pad"
+    | "bass"
+    | "pluck"
+    | "bells"
+    | "lead"
+    | "texture"
+    | "percussion"
+    | "drums";
 
 type ChordExtension = "triad" | "seventh" | "ninth";
+type Mode = "major" | "minor";
+type ArpPattern = "up" | "down" | "updown" | "broken" | "random";
+type BassPattern = "pedal" | "root" | "pulse" | "walking" | "octaves";
+type PadArticulation = "sustain" | "swell" | "stabs";
+type DrumPatternId =
+    | "cinematic"
+    | "lofi"
+    | "jazz"
+    | "electronic"
+    | "folk"
+    | "minimal"
+    | "soft";
+
+export interface InstrumentDef {
+    id: Instrument;
+    label: string;
+    program: number | null;
+    family: string;
+    role: Role;
+}
+
+export interface InstrumentFamily {
+    id: string;
+    label: string;
+    instruments: readonly InstrumentDef[];
+}
+
+interface FamilySpec {
+    id: string;
+    label: string;
+    start: number;
+    role: Role;
+    names: readonly string[];
+}
+
+const FAMILY_SPECS: readonly FamilySpec[] = [
+    {
+        id: "piano",
+        label: "Piano",
+        start: 0,
+        role: "keys",
+        names: [
+            "Acoustic Grand Piano",
+            "Bright Acoustic Piano",
+            "Electric Grand Piano",
+            "Honky-tonk Piano",
+            "Electric Piano 1",
+            "Electric Piano 2",
+            "Harpsichord",
+            "Clavinet",
+        ],
+    },
+    {
+        id: "chromatic",
+        label: "Chromatic Percussion",
+        start: 8,
+        role: "bells",
+        names: [
+            "Celesta",
+            "Glockenspiel",
+            "Music Box",
+            "Vibraphone",
+            "Marimba",
+            "Xylophone",
+            "Tubular Bells",
+            "Dulcimer",
+        ],
+    },
+    {
+        id: "organ",
+        label: "Organ",
+        start: 16,
+        role: "pad",
+        names: [
+            "Drawbar Organ",
+            "Percussive Organ",
+            "Rock Organ",
+            "Church Organ",
+            "Reed Organ",
+            "Accordion",
+            "Harmonica",
+            "Tango Accordion",
+        ],
+    },
+    {
+        id: "guitar",
+        label: "Guitar",
+        start: 24,
+        role: "pluck",
+        names: [
+            "Acoustic Guitar (nylon)",
+            "Acoustic Guitar (steel)",
+            "Electric Guitar (jazz)",
+            "Electric Guitar (clean)",
+            "Electric Guitar (muted)",
+            "Overdriven Guitar",
+            "Distortion Guitar",
+            "Guitar Harmonics",
+        ],
+    },
+    {
+        id: "bass",
+        label: "Bass",
+        start: 32,
+        role: "bass",
+        names: [
+            "Acoustic Bass",
+            "Electric Bass (finger)",
+            "Electric Bass (pick)",
+            "Fretless Bass",
+            "Slap Bass 1",
+            "Slap Bass 2",
+            "Synth Bass 1",
+            "Synth Bass 2",
+        ],
+    },
+    {
+        id: "strings",
+        label: "Strings",
+        start: 40,
+        role: "pad",
+        names: [
+            "Violin",
+            "Viola",
+            "Cello",
+            "Contrabass",
+            "Tremolo Strings",
+            "Pizzicato Strings",
+            "Orchestral Harp",
+            "Timpani",
+        ],
+    },
+    {
+        id: "ensemble",
+        label: "Ensemble",
+        start: 48,
+        role: "pad",
+        names: [
+            "String Ensemble 1",
+            "String Ensemble 2",
+            "Synth Strings 1",
+            "Synth Strings 2",
+            "Choir Aahs",
+            "Voice Oohs",
+            "Synth Voice",
+            "Orchestra Hit",
+        ],
+    },
+    {
+        id: "brass",
+        label: "Brass",
+        start: 56,
+        role: "lead",
+        names: [
+            "Trumpet",
+            "Trombone",
+            "Tuba",
+            "Muted Trumpet",
+            "French Horn",
+            "Brass Section",
+            "Synth Brass 1",
+            "Synth Brass 2",
+        ],
+    },
+    {
+        id: "reed",
+        label: "Reed",
+        start: 64,
+        role: "lead",
+        names: [
+            "Soprano Sax",
+            "Alto Sax",
+            "Tenor Sax",
+            "Baritone Sax",
+            "Oboe",
+            "English Horn",
+            "Bassoon",
+            "Clarinet",
+        ],
+    },
+    {
+        id: "pipe",
+        label: "Pipe",
+        start: 72,
+        role: "lead",
+        names: [
+            "Piccolo",
+            "Flute",
+            "Recorder",
+            "Pan Flute",
+            "Blown Bottle",
+            "Shakuhachi",
+            "Whistle",
+            "Ocarina",
+        ],
+    },
+    {
+        id: "synth-lead",
+        label: "Synth Lead",
+        start: 80,
+        role: "lead",
+        names: [
+            "Lead 1 (square)",
+            "Lead 2 (sawtooth)",
+            "Lead 3 (calliope)",
+            "Lead 4 (chiff)",
+            "Lead 5 (charang)",
+            "Lead 6 (voice)",
+            "Lead 7 (fifths)",
+            "Lead 8 (bass + lead)",
+        ],
+    },
+    {
+        id: "synth-pad",
+        label: "Synth Pad",
+        start: 88,
+        role: "pad",
+        names: [
+            "Pad 1 (new age)",
+            "Pad 2 (warm)",
+            "Pad 3 (polysynth)",
+            "Pad 4 (choir)",
+            "Pad 5 (bowed)",
+            "Pad 6 (metallic)",
+            "Pad 7 (halo)",
+            "Pad 8 (sweep)",
+        ],
+    },
+    {
+        id: "synth-effects",
+        label: "Synth Effects",
+        start: 96,
+        role: "texture",
+        names: [
+            "FX 1 (rain)",
+            "FX 2 (soundtrack)",
+            "FX 3 (crystal)",
+            "FX 4 (atmosphere)",
+            "FX 5 (brightness)",
+            "FX 6 (goblins)",
+            "FX 7 (echoes)",
+            "FX 8 (sci-fi)",
+        ],
+    },
+    {
+        id: "ethnic",
+        label: "Ethnic",
+        start: 104,
+        role: "pluck",
+        names: [
+            "Sitar",
+            "Banjo",
+            "Shamisen",
+            "Koto",
+            "Kalimba",
+            "Bagpipe",
+            "Fiddle",
+            "Shanai",
+        ],
+    },
+    {
+        id: "percussive",
+        label: "Percussive",
+        start: 112,
+        role: "percussion",
+        names: [
+            "Tinkle Bell",
+            "Agogo",
+            "Steel Drums",
+            "Woodblock",
+            "Taiko Drum",
+            "Melodic Tom",
+            "Synth Drum",
+            "Reverse Cymbal",
+        ],
+    },
+    {
+        id: "sound-effects",
+        label: "Sound Effects",
+        start: 120,
+        role: "texture",
+        names: [
+            "Guitar Fret Noise",
+            "Breath Noise",
+            "Seashore",
+            "Bird Tweet",
+            "Telephone Ring",
+            "Helicopter",
+            "Applause",
+            "Gunshot",
+        ],
+    },
+];
+
+const ROLE_OVERRIDES: Record<string, Role> = {
+    "harpsichord": "keys",
+    "clavinet": "keys",
+    "orchestral-harp": "pluck",
+    "pizzicato-strings": "pluck",
+    "tremolo-strings": "pad",
+    "timpani": "bass",
+    "reverse-cymbal": "texture",
+    "tinkle-bell": "bells",
+    "agogo": "bells",
+    "steel-drums": "percussion",
+    "woodblock": "percussion",
+    "taiko-drum": "percussion",
+    "melodic-tom": "percussion",
+    "synth-drum": "percussion",
+};
+
+function slugify(label: string): string {
+    return label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+}
+
+const melodicFamilies: InstrumentFamily[] = FAMILY_SPECS.map(spec => ({
+    id: spec.id,
+    label: spec.label,
+    instruments: spec.names.map((label, index) => {
+        const id = slugify(label);
+
+        return {
+            id,
+            label,
+            program: spec.start + index,
+            family: spec.id,
+            role: ROLE_OVERRIDES[id] ?? spec.role,
+        };
+    }),
+}));
+
+export const DRUM_KIT: InstrumentDef = {
+    id: "drums",
+    label: "Drum Kit",
+    program: null,
+    family: "drums",
+    role: "drums",
+};
+
+export const INSTRUMENT_FAMILIES: readonly InstrumentFamily[] = [
+    ...melodicFamilies,
+    { id: "drums", label: "Drums", instruments: [DRUM_KIT] },
+];
+
+export const INSTRUMENTS: readonly InstrumentDef[] =
+    INSTRUMENT_FAMILIES.flatMap(family => family.instruments);
+
+const INSTRUMENT_BY_ID = new Map(
+    INSTRUMENTS.map(instrument => [instrument.id, instrument])
+);
+
+export function instrumentLabel(instrument: Instrument): string {
+    return INSTRUMENT_BY_ID.get(instrument)?.label ?? instrument;
+}
+
+export const DEFAULT_INSTRUMENTS: readonly Instrument[] = [
+    "acoustic-grand-piano",
+    "pad-2-warm",
+    "string-ensemble-1",
+    "music-box",
+];
+
+export const SUGGESTED_INSTRUMENTS: Record<Style, readonly Instrument[]> = {
+    ambient: DEFAULT_INSTRUMENTS,
+    cinematic: [
+        "string-ensemble-1",
+        "church-organ",
+        "french-horn",
+        "timpani",
+        "choir-aahs",
+        "drums",
+    ],
+    lofi: [
+        "electric-piano-1",
+        "electric-bass-finger",
+        "electric-guitar-jazz",
+        "vibraphone",
+        "drums",
+    ],
+    classical: [
+        "acoustic-grand-piano",
+        "violin",
+        "cello",
+        "string-ensemble-2",
+    ],
+    jazz: [
+        "acoustic-grand-piano",
+        "acoustic-bass",
+        "tenor-sax",
+        "vibraphone",
+        "drums",
+    ],
+    electronic: [
+        "synth-bass-1",
+        "pad-1-new-age",
+        "lead-2-sawtooth",
+        "fx-3-crystal",
+        "drums",
+    ],
+    folk: [
+        "acoustic-guitar-steel",
+        "acoustic-bass",
+        "violin",
+        "woodblock",
+    ],
+    minimal: [
+        "electric-piano-2",
+        "pad-3-polysynth",
+        "music-box",
+        "synth-bass-2",
+    ],
+    drone: [
+        "pad-2-warm",
+        "church-organ",
+        "string-ensemble-2",
+        "fx-4-atmosphere",
+    ],
+};
 
 interface MoodProfile {
-    progressions: readonly (readonly ChordName[])[];
     tonic: ChordName;
-    extension: ChordExtension;
+    mode: Mode;
     melodyChance: number;
     melodyNotes: readonly [number, number];
     melodyLengths: readonly number[];
@@ -59,14 +494,8 @@ const MOOD_NOTES: Record<Mood, readonly number[]> = {
 
 const MOOD_PROFILES: Record<Mood, MoodProfile> = {
     peaceful: {
-        progressions: [
-            ["I", "V", "vi", "IV"],
-            ["I", "vi", "IV", "V"],
-            ["I", "IV", "I", "V"],
-            ["I", "iii", "IV", "I"],
-        ],
         tonic: "I",
-        extension: "triad",
+        mode: "major",
         melodyChance: 0.55,
         melodyNotes: [1, 2],
         melodyLengths: [1, 1.5, 2],
@@ -75,14 +504,8 @@ const MOOD_PROFILES: Record<Mood, MoodProfile> = {
         reverb: 100,
     },
     dreamy: {
-        progressions: [
-            ["I", "iii", "vi", "IV"],
-            ["IV", "I", "vi", "iii"],
-            ["I", "vi", "ii", "IV"],
-            ["vi", "IV", "I", "V"],
-        ],
         tonic: "I",
-        extension: "ninth",
+        mode: "major",
         melodyChance: 0.75,
         melodyNotes: [2, 3],
         melodyLengths: [0.5, 1, 1.5, 2],
@@ -91,14 +514,8 @@ const MOOD_PROFILES: Record<Mood, MoodProfile> = {
         reverb: 118,
     },
     nostalgic: {
-        progressions: [
-            ["I", "iii", "IV", "V"],
-            ["vi", "IV", "I", "V"],
-            ["I", "IV", "ii", "V"],
-            ["I", "vi", "iii", "IV"],
-        ],
         tonic: "I",
-        extension: "seventh",
+        mode: "major",
         melodyChance: 0.7,
         melodyNotes: [2, 3],
         melodyLengths: [1, 1.5, 2],
@@ -107,14 +524,8 @@ const MOOD_PROFILES: Record<Mood, MoodProfile> = {
         reverb: 105,
     },
     mysterious: {
-        progressions: [
-            ["i", "bVI", "bIII", "bVII"],
-            ["i", "iv", "bVII", "bIII"],
-            ["i", "v", "bVI", "iv"],
-            ["i", "bVII", "bVI", "v"],
-        ],
         tonic: "i",
-        extension: "seventh",
+        mode: "minor",
         melodyChance: 0.5,
         melodyNotes: [1, 2],
         melodyLengths: [1.5, 2],
@@ -124,23 +535,305 @@ const MOOD_PROFILES: Record<Mood, MoodProfile> = {
     },
 };
 
-interface InstrumentMix {
-    volume: number;
-    pan: number;
+export const MOODS: readonly Mood[] = [
+    "peaceful",
+    "dreamy",
+    "nostalgic",
+    "mysterious",
+];
+
+interface StyleProfile {
+    label: string;
+    description: string;
+    progressions: Record<Mode, readonly (readonly ChordName[])[]>;
+    extension: ChordExtension;
+    swing: number;
+    arpStep: number;
+    arpPattern: ArpPattern;
+    bassPattern: BassPattern;
+    padArticulation: PadArticulation;
+    drumPattern: DrumPatternId | null;
+    melodyDensity: number;
+    reverb: number;
+    groove: number;
+    counterpoint: number;
 }
 
-const INSTRUMENT_MIX: Record<Instrument, InstrumentMix> = {
-    piano: { volume: 100, pan: 0 },
-    pad: { volume: 72, pan: 0 },
-    strings: { volume: 66, pan: -35 },
-    musicbox: { volume: 82, pan: 40 },
+const STYLE_PROFILES: Record<Style, StyleProfile> = {
+    ambient: {
+        label: "Ambient",
+        description: "Slow sustained pads, unhurried arpeggios and airy space.",
+        progressions: {
+            major: [
+                ["I", "V", "vi", "IV"],
+                ["I", "vi", "IV", "V"],
+                ["I", "iii", "IV", "I"],
+                ["IV", "I", "V", "vi"],
+            ],
+            minor: [
+                ["i", "bVI", "bIII", "bVII"],
+                ["i", "iv", "bVII", "bIII"],
+                ["i", "bVII", "bVI", "iv"],
+            ],
+        },
+        extension: "ninth",
+        swing: 0,
+        arpStep: 0.5,
+        arpPattern: "updown",
+        bassPattern: "pedal",
+        padArticulation: "sustain",
+        drumPattern: null,
+        melodyDensity: 0.8,
+        reverb: 112,
+        groove: 6,
+        counterpoint: 0.2,
+    },
+    cinematic: {
+        label: "Cinematic",
+        description: "Wide swells, low foundations and sparse dramatic hits.",
+        progressions: {
+            major: [
+                ["I", "V", "vi", "IV"],
+                ["vi", "IV", "I", "V"],
+                ["I", "IV", "vi", "V"],
+                ["IV", "I", "V", "I"],
+            ],
+            minor: [
+                ["i", "bVI", "bIII", "bVII"],
+                ["i", "iv", "v", "i"],
+                ["i", "bVII", "bVI", "bIII"],
+            ],
+        },
+        extension: "triad",
+        swing: 0,
+        arpStep: 1,
+        arpPattern: "down",
+        bassPattern: "pedal",
+        padArticulation: "swell",
+        drumPattern: "cinematic",
+        melodyDensity: 0.7,
+        reverb: 118,
+        groove: 4,
+        counterpoint: 0.35,
+    },
+    lofi: {
+        label: "Lo-fi",
+        description: "Lazy swing, warm seventh chords and dusty drums.",
+        progressions: {
+            major: [
+                ["ii", "V", "I", "vi"],
+                ["I", "vi", "ii", "V"],
+                ["IV", "iii", "ii", "I"],
+                ["vi", "ii", "V", "I"],
+            ],
+            minor: [
+                ["i", "bVII", "bVI", "v"],
+                ["i", "iv", "bVII", "bIII"],
+                ["i", "v", "bVI", "iv"],
+            ],
+        },
+        extension: "seventh",
+        swing: 0.33,
+        arpStep: 0.5,
+        arpPattern: "broken",
+        bassPattern: "root",
+        padArticulation: "sustain",
+        drumPattern: "lofi",
+        melodyDensity: 0.75,
+        reverb: 96,
+        groove: 14,
+        counterpoint: 0.3,
+    },
+    classical: {
+        label: "Classical",
+        description: "Chamber counterpoint, broken chords and restrained dynamics.",
+        progressions: {
+            major: [
+                ["I", "IV", "V", "I"],
+                ["I", "vi", "IV", "V"],
+                ["I", "ii", "V", "I"],
+                ["I", "IV", "I", "V"],
+            ],
+            minor: [
+                ["i", "iv", "v", "i"],
+                ["i", "bVI", "iv", "v"],
+                ["i", "bVII", "bIII", "bVI"],
+            ],
+        },
+        extension: "triad",
+        swing: 0,
+        arpStep: 0.5,
+        arpPattern: "up",
+        bassPattern: "root",
+        padArticulation: "sustain",
+        drumPattern: null,
+        melodyDensity: 0.9,
+        reverb: 90,
+        groove: 3,
+        counterpoint: 0.45,
+    },
+    jazz: {
+        label: "Jazz",
+        description: "Swung ride, walking bass and conversational seventh chords.",
+        progressions: {
+            major: [
+                ["ii", "V", "I", "vi"],
+                ["I", "vi", "ii", "V"],
+                ["iii", "vi", "ii", "V"],
+                ["I", "IV", "iii", "vi"],
+            ],
+            minor: [
+                ["i", "iv", "v", "i"],
+                ["i", "bVII", "bVI", "v"],
+                ["i", "bVI", "iv", "v"],
+            ],
+        },
+        extension: "seventh",
+        swing: 0.55,
+        arpStep: 0.5,
+        arpPattern: "broken",
+        bassPattern: "walking",
+        padArticulation: "stabs",
+        drumPattern: "jazz",
+        melodyDensity: 0.85,
+        reverb: 80,
+        groove: 8,
+        counterpoint: 0.5,
+    },
+    electronic: {
+        label: "Electronic",
+        description: "Four-on-the-floor pulse, octave bass and crisp arpeggios.",
+        progressions: {
+            major: [
+                ["I", "V", "vi", "IV"],
+                ["vi", "IV", "I", "V"],
+                ["I", "IV", "I", "V"],
+                ["IV", "V", "vi", "I"],
+            ],
+            minor: [
+                ["i", "bVI", "bIII", "bVII"],
+                ["i", "bVII", "bVI", "v"],
+                ["i", "iv", "bVII", "bIII"],
+            ],
+        },
+        extension: "seventh",
+        swing: 0,
+        arpStep: 0.25,
+        arpPattern: "up",
+        bassPattern: "octaves",
+        padArticulation: "stabs",
+        drumPattern: "electronic",
+        melodyDensity: 0.8,
+        reverb: 88,
+        groove: 2,
+        counterpoint: 0.25,
+    },
+    folk: {
+        label: "Folk",
+        description: "Acoustic strumming, simple bass and hand percussion.",
+        progressions: {
+            major: [
+                ["I", "IV", "I", "V"],
+                ["I", "V", "IV", "I"],
+                ["I", "vi", "IV", "V"],
+                ["I", "IV", "V", "I"],
+            ],
+            minor: [
+                ["i", "bVII", "bIII", "bVII"],
+                ["i", "iv", "i", "v"],
+                ["i", "bVII", "bVI", "bVII"],
+            ],
+        },
+        extension: "triad",
+        swing: 0.08,
+        arpStep: 0.5,
+        arpPattern: "broken",
+        bassPattern: "root",
+        padArticulation: "sustain",
+        drumPattern: "folk",
+        melodyDensity: 0.9,
+        reverb: 70,
+        groove: 8,
+        counterpoint: 0.35,
+    },
+    minimal: {
+        label: "Minimal",
+        description: "Repetitive cells, long tones and carefully placed silence.",
+        progressions: {
+            major: [
+                ["I", "I", "IV", "I"],
+                ["I", "V", "I", "I"],
+                ["I", "IV", "I", "IV"],
+            ],
+            minor: [
+                ["i", "i", "bVI", "i"],
+                ["i", "bVII", "i", "i"],
+            ],
+        },
+        extension: "triad",
+        swing: 0,
+        arpStep: 0.25,
+        arpPattern: "up",
+        bassPattern: "pulse",
+        padArticulation: "sustain",
+        drumPattern: "minimal",
+        melodyDensity: 0.55,
+        reverb: 104,
+        groove: 3,
+        counterpoint: 0.15,
+    },
+    drone: {
+        label: "Drone",
+        description: "Held harmony, slow timbral drift and almost no rhythm.",
+        progressions: {
+            major: [["I", "I", "I", "I"]],
+            minor: [["i", "i", "i", "i"]],
+        },
+        extension: "triad",
+        swing: 0,
+        arpStep: 1,
+        arpPattern: "up",
+        bassPattern: "pedal",
+        padArticulation: "sustain",
+        drumPattern: null,
+        melodyDensity: 0.35,
+        reverb: 126,
+        groove: 2,
+        counterpoint: 0.1,
+    },
 };
+
+export const STYLES: readonly Style[] = [
+    "ambient",
+    "cinematic",
+    "lofi",
+    "classical",
+    "jazz",
+    "electronic",
+    "folk",
+    "minimal",
+    "drone",
+];
+
+export function styleLabel(style: Style): string {
+    return STYLE_PROFILES[style].label;
+}
+
+export function styleDescription(style: Style): string {
+    return STYLE_PROFILES[style].description;
+}
+
+export function moodLabel(mood: Mood): string {
+    return mood.charAt(0).toUpperCase() + mood.slice(1);
+}
 
 export interface AmbientMidiOptions {
     duration: number;
     bpm: number;
     key: KeyName;
     mood: Mood;
+    style: Style;
+    variation: number;
     instruments: Instrument[];
     seed: number;
 }
@@ -152,7 +845,9 @@ export const AMBIENT_MIDI_DEFAULTS: AmbientMidiOptions = {
     bpm: 64,
     key: "C",
     mood: "peaceful",
-    instruments: ["piano", "pad", "strings", "musicbox"],
+    style: "ambient",
+    variation: 50,
+    instruments: [...DEFAULT_INSTRUMENTS],
     seed: 12345,
 };
 
@@ -168,6 +863,7 @@ export interface AmbientSequence {
     ticksPerBeat: number;
     bpm: number;
     seed: number;
+    style: Style;
 }
 
 interface MelodyNote {
@@ -186,6 +882,11 @@ interface NoteSpan {
     pitch: number;
     on: MidiEvent;
     off: MidiEvent;
+}
+
+interface MelodyResult {
+    notes: MelodyNote[];
+    anchor: number | null;
 }
 
 /**
@@ -303,19 +1004,17 @@ function toBase64(bytes: number[]): string {
     return btoa(binary);
 }
 
-function chordIntervals(name: ChordName, mood: Mood): number[] {
+function chordIntervals(
+    name: ChordName,
+    extension: ChordExtension,
+): number[] {
     const base = [...CHORDS[name]];
-    const extension = MOOD_PROFILES[mood].extension;
 
     if (extension === "triad") return base;
 
     const root = base[0];
     const minorThird = base[1] - root === 3;
-    const seventh = root + (
-        minorThird
-            ? 10
-            : mood === "mysterious" ? 10 : 11
-    );
+    const seventh = root + (minorThird ? 10 : 11);
 
     base.push(seventh);
 
@@ -407,37 +1106,52 @@ function generateMelody(
     root: number,
     mood: Mood,
     chordTones: readonly number[],
-): MelodyNote[] {
+    style: StyleProfile,
+    variation: number,
+    low: number,
+    high: number,
+    chanceScale: number,
+    anchor: number | null,
+    force = false,
+): MelodyResult {
     const profile = MOOD_PROFILES[mood];
+    const variationFactor = 0.5 + variation / 100;
+    const chance = clamp(
+        profile.melodyChance * style.melodyDensity * chanceScale,
+        0,
+        1,
+    );
 
-    if (random() > profile.melodyChance) return [];
+    if (!force && random() > chance) return { notes: [], anchor };
 
     const [minimum, maximum] = profile.melodyNotes;
-    const targetCount = minimum + Math.floor(random() * (maximum - minimum + 1));
-    const scale = scalePitches(MOOD_NOTES[mood], root, 70, 88);
+    const extra = variation >= 60 ? 1 : 0;
+    const targetCount = minimum
+        + Math.floor(random() * (maximum - minimum + 1 + extra));
+    const scale = scalePitches(MOOD_NOTES[mood], root, low, high);
     const chordPool = chordTones
-        .map(pitch => pitch + 12)
-        .filter(pitch => pitch <= 90);
-    const notes: MelodyNote[] = [];
+        .flatMap(pitch => [pitch, pitch + 12, pitch + 24])
+        .filter(pitch => pitch >= low && pitch <= high);
 
+    if (chordPool.length === 0) {
+        chordPool.push(...scale);
+    }
+
+    const notes: MelodyNote[] = [];
     let beat = random() < 0.4 ? choose(random, [1, 2]) : 0;
     let previous: MelodyNote | null = null;
+    let lastPitch = anchor;
 
     while (notes.length < targetCount && beat < 4) {
         const strong = beat === 0 || beat === 1 || beat === 2;
         const useChordTone = strong || random() < 0.45;
         const pool = useChordTone ? chordPool : scale;
-        const anchor = previous?.pitch ?? choose(random, chordPool);
-
+        const target = lastPitch ?? choose(random, chordPool);
+        const motion = choose(random, [-2, -1, 1, 2]);
         let pitch = useChordTone
-            ? nearestPitch(random, pool, anchor)
-            : nearestPitch(
-                random,
-                pool,
-                anchor + choose(random, [-2, -1, 1, 2]),
-            );
+            ? nearestPitch(random, pool, target)
+            : nearestPitch(random, pool, target + motion);
 
-        // Never retrigger a pitch while its previous note is still sounding.
         if (
             previous &&
             pitch === previous.pitch &&
@@ -456,33 +1170,167 @@ function generateMelody(
         }
 
         const maxLength = 4 - beat;
-        const length = Math.min(choose(random, profile.melodyLengths), maxLength);
+        let length = Math.min(
+            choose(random, profile.melodyLengths) * variationFactor,
+            maxLength,
+        );
 
         if (length < 0.25) break;
+
+        // Occasional grace note a step before the main note.
+        if (
+            variation > 30
+            && random() < 0.12 * (variation / 100)
+            && beat >= 0.5
+            && (!previous || previous.beat + previous.length <= beat - 0.25)
+        ) {
+            const gracePitch = nearestPitch(
+                random,
+                scale,
+                pitch + (random() < 0.5 ? -1 : 1),
+            );
+
+            if (gracePitch !== pitch) {
+                notes.push({
+                    pitch: gracePitch,
+                    beat: beat - 0.25,
+                    length: 0.22,
+                    velocity: clamp(
+                        profile.melodyVelocity + jitter(random, 8),
+                        20,
+                        100,
+                    ),
+                });
+            }
+        }
 
         const note: MelodyNote = {
             pitch,
             beat,
             length,
             velocity: clamp(
-                profile.melodyVelocity + jitter(random, 5),
+                profile.melodyVelocity + jitter(random, 6),
                 20,
-                90,
+                100,
             ),
         };
 
         notes.push(note);
         previous = note;
+        lastPitch = pitch;
         beat += length + (random() < 0.45 ? choose(random, [0.5, 1]) : 0);
         beat = Math.round(beat * 2) / 2;
     }
 
-    // Keep the phrase inside its bar so it cannot collide with the next bar.
     for (const note of notes) {
         note.length = Math.min(note.length, 4 - note.beat);
     }
 
-    return notes;
+    return { notes, anchor: lastPitch };
+}
+
+interface DrumHit {
+    step: number;
+    note: number;
+    velocity: number;
+}
+
+const DRUM_NOTE = {
+    kick: 36,
+    kickSoft: 35,
+    snare: 38,
+    clap: 39,
+    closedHat: 42,
+    openHat: 46,
+    ride: 51,
+    rideBell: 53,
+    crash: 49,
+    lowTom: 45,
+    midTom: 47,
+    highTom: 50,
+    conga: 63,
+    shaker: 70,
+    claves: 75,
+    woodblock: 76,
+};
+
+function hits(
+    note: number,
+    steps: readonly number[],
+    velocity: number,
+): DrumHit[] {
+    return steps.map(step => ({ step, note, velocity }));
+}
+
+const DRUM_PATTERNS: Record<DrumPatternId, readonly DrumHit[]> = {
+    cinematic: [
+        ...hits(DRUM_NOTE.kick, [0, 8], 92),
+        ...hits(DRUM_NOTE.lowTom, [10], 58),
+        ...hits(DRUM_NOTE.snare, [12], 74),
+        ...hits(DRUM_NOTE.crash, [0], 68),
+    ],
+    lofi: [
+        ...hits(DRUM_NOTE.kick, [0, 7, 10], 88),
+        ...hits(DRUM_NOTE.snare, [4, 12], 76),
+        ...hits(DRUM_NOTE.closedHat, [0, 2, 4, 6, 8, 10, 12], 42),
+        ...hits(DRUM_NOTE.openHat, [14], 52),
+        ...hits(DRUM_NOTE.shaker, [3, 11], 30),
+    ],
+    jazz: [
+        ...hits(DRUM_NOTE.kick, [0, 8], 40),
+        ...hits(DRUM_NOTE.snare, [4, 12], 58),
+        ...hits(DRUM_NOTE.ride, [0, 3, 4, 6, 8, 11, 12, 14], 58),
+        ...hits(DRUM_NOTE.rideBell, [6], 48),
+    ],
+    electronic: [
+        ...hits(DRUM_NOTE.kick, [0, 4, 8, 12], 98),
+        ...hits(DRUM_NOTE.clap, [4, 12], 78),
+        ...hits(DRUM_NOTE.closedHat, [2, 6, 10, 14], 46),
+        ...hits(DRUM_NOTE.openHat, [14], 58),
+        ...hits(DRUM_NOTE.crash, [0], 54),
+    ],
+    folk: [
+        ...hits(DRUM_NOTE.kick, [0, 8], 74),
+        ...hits(DRUM_NOTE.snare, [4, 12], 62),
+        ...hits(DRUM_NOTE.shaker, [0, 2, 4, 6, 8, 10, 12, 14], 38),
+        ...hits(DRUM_NOTE.conga, [3, 7, 11, 15], 48),
+    ],
+    minimal: [
+        ...hits(DRUM_NOTE.kick, [0], 62),
+        ...hits(DRUM_NOTE.closedHat, [6, 14], 30),
+        ...hits(DRUM_NOTE.claves, [4, 12], 34),
+    ],
+    soft: [
+        ...hits(DRUM_NOTE.kick, [0, 8], 46),
+        ...hits(DRUM_NOTE.shaker, [4, 12], 28),
+        ...hits(DRUM_NOTE.closedHat, [6, 14], 24),
+    ],
+};
+
+function buildArpOrder(
+    random: Random,
+    pattern: ArpPattern,
+    count: number,
+): number[] {
+    const ascending = Array.from({ length: count }, (_, index) => index);
+
+    if (pattern === "down") return ascending.reverse();
+    if (pattern === "updown") {
+        const down = ascending.slice(1, -1).reverse();
+        return [...ascending, ...down];
+    }
+    if (pattern === "broken") {
+        const even = ascending.filter(index => index % 2 === 0);
+        const odd = ascending.filter(index => index % 2 === 1);
+        return [...even, ...odd];
+    }
+    if (pattern === "random") {
+        for (let index = ascending.length - 1; index > 0; index--) {
+            const swap = Math.floor(random() * (index + 1));
+            [ascending[index], ascending[swap]] = [ascending[swap], ascending[index]];
+        }
+    }
+    return ascending;
 }
 
 export function composeAmbientSequence(
@@ -495,6 +1343,8 @@ export function composeAmbientSequence(
         bpm,
         key,
         mood,
+        style,
+        variation,
         instruments,
         seed,
     } = settings;
@@ -514,6 +1364,12 @@ export function composeAmbientSequence(
     if (!Object.hasOwn(MOOD_NOTES, mood))
         throw new Error("Unsupported mood");
 
+    if (!Object.hasOwn(STYLE_PROFILES, style))
+        throw new Error("Unsupported style");
+
+    if (!Number.isFinite(variation) || variation < 0 || variation > 100)
+        throw new Error("variation must be between 0 and 100");
+
     if (!Number.isInteger(seed))
         throw new Error("seed must be an integer");
 
@@ -524,11 +1380,22 @@ export function composeAmbientSequence(
         throw new Error("instruments must be unique");
 
     for (const instrument of instruments) {
-        if (!Object.hasOwn(PROGRAMS, instrument))
+        if (!INSTRUMENT_BY_ID.has(instrument))
             throw new Error(`Unknown instrument: ${instrument}`);
     }
 
+    const melodicCount = instruments.filter(
+        instrument => instrument !== DRUM_KIT.id
+    ).length;
+
+    if (melodicCount > MAX_MELODIC_INSTRUMENTS)
+        throw new Error(
+            `at most ${MAX_MELODIC_INSTRUMENTS} melodic instruments are supported`
+        );
+
     const profile = MOOD_PROFILES[mood];
+    const styleProfile = STYLE_PROFILES[style];
+    const variationFactor = 0.5 + variation / 100;
     const resolvedSeed = seed === -1
         ? Math.floor(Math.random() * 2 ** 32)
         : seed;
@@ -537,6 +1404,13 @@ export function composeAmbientSequence(
 
     const totalTicks = Math.round(duration * bpm / 60 * TICK_RATE);
     const bars = Math.ceil(totalTicks / BAR);
+    const instrumentDefs = instruments.map(
+        instrument => INSTRUMENT_BY_ID.get(instrument) as InstrumentDef
+    );
+    const roles = new Set(instrumentDefs.map(instrument => instrument.role));
+    const hasLead = roles.has("lead");
+    const hasBass = roles.has("bass");
+    const hasPluck = roles.has("pluck");
 
     function addEvent(
         track: MidiEvent[],
@@ -559,14 +1433,19 @@ export function composeAmbientSequence(
         velocity: number,
         spans: NoteSpan[],
     ): void {
-        const onTick = Math.round(start);
-        const offTick = Math.min(Math.round(start + length), totalTicks);
+        if (pitch < 0 || pitch > 127) return;
+
+        const onTick = clamp(Math.round(start), 0, totalTicks);
+        const offTick = Math.min(
+            Math.max(onTick + 1, Math.round(start + length)),
+            totalTicks,
+        );
 
         if (onTick >= totalTicks || offTick <= onTick) return;
 
         const on: MidiEvent = {
             tick: onTick,
-            data: [0x90 | channel, pitch, velocity],
+            data: [0x90 | channel, pitch, clamp(Math.round(velocity), 1, 127)],
             priority: 2,
         };
         const off: MidiEvent = {
@@ -579,10 +1458,25 @@ export function composeAmbientSequence(
         spans.push({ pitch, on, off });
     }
 
-    function makeTrack(instrument: Instrument, channel: number): MidiEvent[] {
+    const ROLE_MIX: Record<Role, { volume: number; pan: number }> = {
+        keys: { volume: 96, pan: 0 },
+        pad: { volume: 70, pan: 0 },
+        bass: { volume: 86, pan: 0 },
+        pluck: { volume: 76, pan: -24 },
+        bells: { volume: 78, pan: 32 },
+        lead: { volume: 82, pan: 12 },
+        texture: { volume: 52, pan: -30 },
+        percussion: { volume: 76, pan: 24 },
+        drums: { volume: 84, pan: 0 },
+    };
+
+    function makeTrack(
+        instrument: InstrumentDef,
+        channel: number,
+    ): MidiEvent[] {
         const track: MidiEvent[] = [];
-        const nameBytes = asciiBytes(instrument);
-        const mix = INSTRUMENT_MIX[instrument];
+        const nameBytes = asciiBytes(instrument.label);
+        const mix = ROLE_MIX[instrument.role];
 
         addEvent(track, 0, [
             0xff, 0x03,
@@ -590,14 +1484,20 @@ export function composeAmbientSequence(
             ...nameBytes,
         ], 0);
 
-        addEvent(track, 0, [
-            0xc0 | channel,
-            PROGRAMS[instrument],
-        ], 0);
+        if (instrument.program !== null) {
+            addEvent(track, 0, [
+                0xc0 | channel,
+                instrument.program,
+            ], 0);
+        }
 
         addEvent(track, 0, [0xb0 | channel, 7, mix.volume], 0);
         addEvent(track, 0, [0xb0 | channel, 10, mix.pan + 64], 0);
-        addEvent(track, 0, [0xb0 | channel, 91, profile.reverb], 0);
+        addEvent(track, 0, [
+            0xb0 | channel,
+            91,
+            Math.round((profile.reverb + styleProfile.reverb) / 2),
+        ], 0);
 
         // Full expression immediately: a step to 0 at tick 0 would mute the
         // first bars, since MIDI controllers do not interpolate.
@@ -623,7 +1523,108 @@ export function composeAmbientSequence(
         return track;
     }
 
-    const progression = choose(random, profile.progressions);
+    function swingBeat(beat: number): number {
+        const fraction = beat - Math.floor(beat);
+
+        if (Math.abs(fraction - 0.5) < 0.01)
+            return beat + styleProfile.swing * 0.5;
+        if (Math.abs(fraction - 0.75) < 0.01)
+            return beat + styleProfile.swing * 0.35;
+        if (Math.abs(fraction - 0.25) < 0.01)
+            return beat + styleProfile.swing * 0.2;
+
+        return beat;
+    }
+
+    function humanize(base: number): number {
+        return Math.round(
+            (random() * 2 - 1) * base * (0.35 + variation / 140)
+        );
+    }
+
+    function beatTick(bar: number, beat: number): number {
+        return bar * BAR + swingBeat(beat) * TICK_RATE + humanize(styleProfile.groove);
+    }
+
+    function velocity(base: number, energy: number, amount = 5): number {
+        return clamp(
+            Math.round(base * (0.84 + 0.16 * energy)) + jitter(random, amount),
+            1,
+            127,
+        );
+    }
+
+    // Arrangement: roles enter in layers and thin out for the outro.
+    const introBars = bars >= 6 ? Math.min(2, Math.floor(bars * 0.1)) : 0;
+    const outroBars = bars >= 6 ? Math.min(2, Math.floor(bars * 0.08)) : 0;
+    const bodyStart = introBars;
+    const bodyEnd = Math.max(bodyStart + 1, bars - outroBars);
+
+    function roleStart(role: Role): number {
+        const lastBar = Math.max(0, bars - 1);
+
+        switch (role) {
+            case "pad":
+            case "texture":
+                return 0;
+            case "bass":
+            case "keys":
+                return Math.min(lastBar, introBars);
+            case "pluck":
+            case "percussion":
+                return Math.min(lastBar, introBars + 1);
+            case "bells":
+                return Math.min(lastBar, introBars + 2);
+            case "drums":
+                return Math.min(lastBar, introBars + 1);
+            case "lead":
+                return Math.min(
+                    lastBar,
+                    introBars + Math.max(2, Math.floor(bars * 0.15)),
+                );
+            default:
+                return Math.min(lastBar, introBars);
+        }
+    }
+
+    function roleActive(role: Role, bar: number): boolean {
+        const start = roleStart(role);
+
+        if (bar < start) return false;
+
+        const sustainsOutro = (
+            role === "pad"
+            || role === "keys"
+            || role === "bass"
+            || role === "texture"
+            || role === "bells"
+        );
+
+        if (bar >= bodyEnd && !sustainsOutro) return false;
+
+        if (
+            bar > start
+            && bar < bodyEnd
+            && (role === "lead" || role === "pluck" || role === "percussion")
+            && random() < 0.035 * variationFactor
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    function energyAt(bar: number): number {
+        if (bar < bodyStart) {
+            return 0.62 + 0.38 * (bar / Math.max(1, bodyStart));
+        }
+
+        if (bar >= bodyEnd) return 0.58;
+
+        return 1;
+    }
+
+    const progression = choose(random, styleProfile.progressions[profile.mode]);
     const resolutionBar = bars >= 4 ? bars - 1 : -1;
 
     function chordForBar(bar: number): ChordName {
@@ -637,7 +1638,7 @@ export function composeAmbientSequence(
 
     for (let bar = 0; bar < bars; bar++) {
         const chord = chordForBar(bar);
-        const intervals = chordIntervals(chord, mood).map(
+        const intervals = chordIntervals(chord, styleProfile.extension).map(
             interval => 60 + keyRoot + interval
         );
         const voicing = voiceChord(intervals, previousVoicing);
@@ -667,129 +1668,514 @@ export function composeAmbientSequence(
 
     tracks.push(conductor);
 
-    for (const [channel, instrument] of instruments.entries()) {
-        const track = makeTrack(instrument, channel);
-        const spans: NoteSpan[] = [];
+    let nextChannel = 0;
 
-        if (instrument === "pad") {
-            // Tonic pedal under the whole piece.
-            addNote(track, channel, 36 + keyRoot, 0, totalTicks, 40, spans);
+    function allocateChannel(): number {
+        while (nextChannel === DRUM_CHANNEL) nextChannel++;
+
+        if (nextChannel > 15) {
+            throw new Error(
+                `at most ${MAX_MELODIC_INSTRUMENTS} melodic instruments are supported`
+            );
         }
 
+        return nextChannel++;
+    }
+
+    const roleInstances = new Map<Role, number>();
+
+    function bassRootFor(chord: ChordName): number {
+        const chordRoot = CHORDS[chord][0];
+        let root = 36 + ((keyRoot + chordRoot) % 12);
+
+        if (root > 47) root -= 12;
+
+        return root;
+    }
+
+    function chordTonesFor(chord: ChordName, root: number): number[] {
+        const chordRoot = CHORDS[chord][0];
+        const tones = chordIntervals(chord, styleProfile.extension).map(
+            interval => root + interval - chordRoot
+        );
+
+        return tones.map(tone => {
+            while (tone < 32) {
+                tone += 12;
+            }
+
+            while (tone > 55) {
+                tone -= 12;
+            }
+
+            return tone;
+        });
+    }
+
+    for (const instrument of instrumentDefs) {
+        const role = instrument.role;
+        const roleInstance = roleInstances.get(role) ?? 0;
+        const channel = role === "drums" ? DRUM_CHANNEL : allocateChannel();
+        const track = makeTrack(instrument, channel);
+        const spans: NoteSpan[] = [];
+        let melodyAnchor: number | null = null;
+
+        roleInstances.set(role, roleInstance + 1);
+
         for (let bar = 0; bar < bars; bar++) {
+            if (!roleActive(role, bar)) continue;
+
             const start = bar * BAR;
+            const energy = energyAt(bar);
             const { chord, voicing } = harmony[bar];
 
-            if (instrument === "piano") {
-                // Root and fifth ground the harmony; the upper beats arpeggiate.
-                const chordRoot = CHORDS[chord][0];
-                let bassRoot = 36 + (keyRoot + chordRoot) % 12;
+            if (role === "keys") {
+                const bassRoot = bassRootFor(chord);
 
-                if (bassRoot > 47) bassRoot -= 12;
+                if (!hasBass) {
+                    for (const beat of [0, 2]) {
+                        addNote(
+                            track,
+                            channel,
+                            bassRoot + (beat === 2 ? 7 : 0),
+                            beatTick(bar, beat),
+                            TICK_RATE * 1.8,
+                            velocity(66, energy),
+                            spans,
+                        );
+                    }
+                }
 
-                const bass = [bassRoot, bassRoot + 7];
-                const arpeggio = voicing.map(pitch => pitch - 12);
+                const compBeats = styleProfile.padArticulation === "stabs"
+                    ? [0, 2]
+                    : [0];
+                const compLength = styleProfile.padArticulation === "stabs"
+                    ? TICK_RATE * 0.7
+                    : BAR * 0.94;
 
-                for (let beat = 0; beat < BEATS_PER_BAR; beat++) {
-                    const isBassBeat = beat === 0 || beat === 2;
-                    const pitch = isBassBeat
-                        ? bass[beat / 2]
-                        : arpeggio[(beat + bar) % arpeggio.length];
-                    const noteStart = clamp(
-                        start + beat * TICK_RATE + (beat === 0 ? 0 : jitter(random, 4)),
-                        start,
-                        totalTicks,
+                for (const beat of compBeats) {
+                    for (const pitch of voicing) {
+                        addNote(
+                            track,
+                            channel,
+                            pitch,
+                            beatTick(bar, beat),
+                            compLength,
+                            velocity(48 + jitter(random, 4), energy, 4),
+                            spans,
+                        );
+                    }
+                }
+
+                if (!hasPluck) {
+                    const step = Math.max(styleProfile.arpStep, 0.5);
+                    const steps = Math.round(BEATS_PER_BAR / step);
+                    const tones = [
+                        ...voicing.map(pitch => pitch - 12),
+                        ...voicing,
+                    ];
+                    const order = buildArpOrder(
+                        random,
+                        styleProfile.arpPattern,
+                        tones.length,
                     );
+
+                    for (let index = 0; index < steps; index++) {
+                        const beat = index * step;
+                        const pitch = tones[order[index % order.length]] + (
+                            roleInstance > 0 ? 12 : 0
+                        );
+
+                        addNote(
+                            track,
+                            channel,
+                            pitch,
+                            beatTick(bar, beat),
+                            Math.min(step * 1.6, BEATS_PER_BAR - beat) * TICK_RATE,
+                            velocity(
+                                (beat === 0 ? 64 : 54) + jitter(random, 4),
+                                energy,
+                                4,
+                            ),
+                            spans,
+                        );
+                    }
+                }
+
+                if (!hasLead) {
+                    const melody = generateMelody(
+                        random,
+                        keyRoot,
+                        mood,
+                        voicing,
+                        styleProfile,
+                        variation,
+                        69,
+                        91,
+                        0.9 + styleProfile.counterpoint * 0.2,
+                        melodyAnchor,
+                    );
+
+                    melodyAnchor = melody.anchor;
+
+                    for (const note of melody.notes) {
+                        addNote(
+                            track,
+                            channel,
+                            note.pitch,
+                            start + note.beat * TICK_RATE + humanize(styleProfile.groove * 0.5),
+                            note.length * TICK_RATE,
+                            velocity(note.velocity, energy, 4),
+                            spans,
+                        );
+                    }
+                }
+            }
+
+            if (role === "pad") {
+                const articulation = styleProfile.padArticulation;
+                const beats = articulation === "sustain" ? [0] : [0, 2];
+                const length = articulation === "stabs"
+                    ? TICK_RATE * 0.8
+                    : articulation === "swell"
+                        ? TICK_RATE * 1.9
+                        : BAR * 0.96;
+
+                for (const [index, beat] of beats.entries()) {
+                    const swell = articulation === "swell"
+                        ? 0.78 + index * 0.18
+                        : 1;
+
+                    for (const pitch of voicing) {
+                        addNote(
+                            track,
+                            channel,
+                            pitch + (roleInstance > 0 ? 12 : 0),
+                            beatTick(bar, beat),
+                            length,
+                            velocity(50 * swell, energy, 3),
+                            spans,
+                        );
+                    }
+                }
+
+                if (roleInstance === 0 && !hasBass) {
+                    const bassRoot = bassRootFor(chord);
+
+                    addNote(
+                        track,
+                        channel,
+                        bassRoot,
+                        start,
+                        BAR * 0.98,
+                        velocity(36, energy, 2),
+                        spans,
+                    );
+                }
+            }
+
+            if (role === "bass") {
+                const root = bassRootFor(chord) + (roleInstance > 0 ? -12 : 0);
+                const fifth = root + 7;
+                const octave = root + 12;
+                const tones = chordTonesFor(chord, root);
+                const pattern = styleProfile.bassPattern;
+
+                if (pattern === "pedal") {
+                    addNote(
+                        track,
+                        channel,
+                        root,
+                        start,
+                        BAR * 0.98,
+                        velocity(68, energy, 3),
+                        spans,
+                    );
+                } else if (pattern === "root") {
+                    for (const [beat, pitch] of [[0, root], [2, fifth]] as const) {
+                        addNote(
+                            track,
+                            channel,
+                            pitch,
+                            beatTick(bar, beat),
+                            TICK_RATE * 1.8,
+                            velocity(70, energy, 3),
+                            spans,
+                        );
+                    }
+                } else if (pattern === "pulse") {
+                    for (let beat = 0; beat < BEATS_PER_BAR; beat++) {
+                        const pitch = beat % 2 === 0 ? root : fifth;
+
+                        addNote(
+                            track,
+                            channel,
+                            pitch,
+                            beatTick(bar, beat),
+                            TICK_RATE * 0.8,
+                            velocity(64 + (beat === 0 ? 6 : 0), energy, 3),
+                            spans,
+                        );
+                    }
+                } else if (pattern === "walking") {
+                    const nextRoot = bassRootFor(harmony[(bar + 1) % bars].chord);
+                    const approach = nextRoot + (nextRoot > root ? -1 : 1);
+                    const walk = [
+                        root,
+                        tones[1] ?? fifth,
+                        tones[2] ?? octave,
+                        approach,
+                    ];
+
+                    for (let beat = 0; beat < BEATS_PER_BAR; beat++) {
+                        addNote(
+                            track,
+                            channel,
+                            walk[beat],
+                            beatTick(bar, beat),
+                            TICK_RATE * 0.85,
+                            velocity(66 + (beat === 0 ? 6 : 0), energy, 5),
+                            spans,
+                        );
+                    }
+                } else {
+                    for (let step = 0; step < BEATS_PER_BAR * 2; step++) {
+                        const beat = step * 0.5;
+                        const pitch = step % 2 === 0 ? root : octave;
+
+                        addNote(
+                            track,
+                            channel,
+                            pitch,
+                            beatTick(bar, beat),
+                            TICK_RATE * 0.38,
+                            velocity(62 + (step % 4 === 0 ? 8 : 0), energy, 3),
+                            spans,
+                        );
+                    }
+                }
+            }
+
+            if (role === "pluck") {
+                const step = styleProfile.arpStep;
+                const steps = Math.round(BEATS_PER_BAR / step);
+                const tones = [
+                    ...voicing.map(pitch => pitch - 12),
+                    ...voicing,
+                    ...voicing.map(pitch => pitch + 12),
+                ].filter(pitch => pitch >= 36 && pitch <= 96);
+                const order = buildArpOrder(
+                    random,
+                    styleProfile.arpPattern,
+                    tones.length,
+                );
+                const transpose = roleInstance > 0 ? -12 : 0;
+
+                for (let index = 0; index < steps; index++) {
+                    const beat = index * step;
+                    const pitch = tones[order[index % order.length]] + transpose;
 
                     addNote(
                         track,
                         channel,
                         pitch,
-                        noteStart,
-                        TICK_RATE * (isBassBeat ? 1.8 : 1.5),
-                        clamp(
-                            68 + (beat === 0 ? 6 : 0) + jitter(random, 4),
-                            20,
-                            80,
+                        beatTick(bar, beat),
+                        Math.min(step * 2.4, BEATS_PER_BAR - beat) * TICK_RATE,
+                        velocity(
+                            (beat === 0 ? 68 : 54) + jitter(random, 5),
+                            energy,
+                            5,
                         ),
                         spans,
                     );
                 }
+            }
 
+            if (role === "bells") {
+                const chance = profile.musicboxChance * styleProfile.melodyDensity;
+                const force = bar === roleStart("bells");
+
+                if (force || random() < chance) {
+                    const beat = force
+                        ? 0
+                        : choose(random, [0.5, 1, 1.5, 2, 2.5, 3]);
+                    const base = choose(random, voicing) + 12;
+                    const pitch = base + choose(random, [0, 0, 12]);
+
+                    addNote(
+                        track,
+                        channel,
+                        pitch,
+                        beatTick(bar, beat),
+                        Math.min(TICK_RATE * 1.6, (BEATS_PER_BAR - beat) * TICK_RATE),
+                        velocity(58, energy, 4),
+                        spans,
+                    );
+
+                    if (variation > 45 && random() < 0.3) {
+                        addNote(
+                            track,
+                            channel,
+                            pitch + 7,
+                            beatTick(bar, beat + 0.5),
+                            TICK_RATE * 1.2,
+                            velocity(46, energy, 4),
+                            spans,
+                        );
+                    }
+                }
+            }
+
+            if (role === "lead") {
+                const transpose = roleInstance > 0 ? -12 : 0;
                 const melody = generateMelody(
                     random,
                     keyRoot,
                     mood,
                     voicing,
+                    styleProfile,
+                    variation,
+                    64 + transpose,
+                    90 + transpose,
+                    roleInstance > 0 ? 0.55 : 1,
+                    melodyAnchor,
+                    bar === roleStart("lead"),
                 );
 
-                for (const note of melody) {
+                melodyAnchor = melody.anchor;
+
+                for (const note of melody.notes) {
                     addNote(
                         track,
                         channel,
-                        note.pitch,
-                        start + note.beat * TICK_RATE,
+                        note.pitch + transpose,
+                        start + note.beat * TICK_RATE + humanize(styleProfile.groove * 0.5),
                         note.length * TICK_RATE,
-                        note.velocity,
+                        velocity(note.velocity, energy, 4),
                         spans,
                     );
                 }
-            }
 
-            if (instrument === "pad") {
-                for (const pitch of voicing) {
+                // A sustained counterline keeps long instrumental passages alive.
+                if (
+                    melody.notes.length === 0
+                    && styleProfile.counterpoint > 0.25
+                    && random() < styleProfile.counterpoint * variationFactor
+                ) {
+                    const pitch = choose(random, voicing) + 12;
+
                     addNote(
                         track,
                         channel,
                         pitch,
                         start,
-                        BAR * 0.96,
-                        clamp(48 + jitter(random, 3), 12, 60),
+                        BAR * 0.9,
+                        velocity(46, energy, 3),
                         spans,
                     );
                 }
             }
 
-            if (instrument === "strings") {
-                const voices = [voicing[0] - 12, voicing[2] - 12];
+            if (role === "texture") {
+                const force = bar === roleStart("texture");
 
-                for (const pitch of voices) {
+                if (
+                    force
+                    || (bar % 2 === 0 && random() < 0.55 * variationFactor)
+                ) {
+                    const beat = force ? 0 : choose(random, [0, 1, 2]);
+                    const pitch = choose(random, voicing) + 12;
+
                     addNote(
                         track,
                         channel,
                         pitch,
+                        beatTick(bar, beat),
+                        TICK_RATE * choose(random, [2, 3, 4]),
+                        velocity(38, energy, 5),
+                        spans,
+                    );
+                }
+
+                if (variation > 55 && random() < 0.18) {
+                    addNote(
+                        track,
+                        channel,
+                        choose(random, voicing) - 12,
                         start,
-                        BAR * 0.97,
-                        clamp(52 + jitter(random, 3), 15, 65),
+                        BAR * 0.98,
+                        velocity(30, energy, 3),
                         spans,
                     );
                 }
             }
 
-            if (instrument === "musicbox" && random() < profile.musicboxChance) {
-                const beat = choose(random, [1, 2, 3]);
-                const pitch = choose(
-                    random,
-                    voicing.map(tone => tone + 12),
-                );
-                const noteStart = clamp(
-                    start + beat * TICK_RATE + jitter(random, 6),
-                    start + beat * TICK_RATE - 6,
-                    start + (BEATS_PER_BAR - 1) * TICK_RATE,
-                );
+            if (role === "percussion") {
+                const pattern = bar % 2 === 0
+                    ? [0, 1.5, 2, 3]
+                    : [0.5, 1, 2.5, 3.5];
+                const base = 48 + keyRoot;
 
-                addNote(
-                    track,
-                    channel,
-                    pitch,
-                    noteStart,
-                    Math.min(
-                        TICK_RATE * 1.5,
-                        start + BAR - noteStart,
-                    ),
-                    58 + jitter(random, 4),
-                    spans,
-                );
+                for (const beat of pattern) {
+                    if (random() < 0.18) continue;
+
+                    addNote(
+                        track,
+                        channel,
+                        base + choose(random, [0, 0, 7, 12]),
+                        beatTick(bar, beat),
+                        TICK_RATE * 0.3,
+                        velocity(beat === 0 ? 72 : 54, energy, 6),
+                        spans,
+                    );
+                }
+            }
+
+            if (role === "drums") {
+                const patternId = styleProfile.drumPattern ?? "soft";
+
+                for (const hit of DRUM_PATTERNS[patternId]) {
+                    // Crashes mark four-bar phrases instead of every bar.
+                    if (
+                        (hit.note === DRUM_NOTE.crash
+                            || hit.note === DRUM_NOTE.rideBell)
+                        && bar % 4 !== 0
+                    ) {
+                        continue;
+                    }
+
+                    const beat = hit.step * 0.25;
+
+                    addNote(
+                        track,
+                        channel,
+                        hit.note,
+                        beatTick(bar, beat),
+                        TICK_RATE * 0.2,
+                        velocity(hit.velocity, energy, 6),
+                        spans,
+                    );
+                }
+
+                // Small fill at the end of each eight-bar phrase.
+                if (variation > 40 && bar % 8 === 7) {
+                    for (const [offset, note] of [
+                        [3, DRUM_NOTE.snare],
+                        [3.25, DRUM_NOTE.snare],
+                        [3.5, DRUM_NOTE.highTom],
+                        [3.75, DRUM_NOTE.lowTom],
+                    ] as const) {
+                        addNote(
+                            track,
+                            channel,
+                            note,
+                            beatTick(bar, offset),
+                            TICK_RATE * 0.18,
+                            velocity(58, energy, 6),
+                            spans,
+                        );
+                    }
+                }
             }
         }
 
@@ -803,6 +2189,7 @@ export function composeAmbientSequence(
         ticksPerBeat: TICK_RATE,
         bpm,
         seed: resolvedSeed,
+        style,
     };
 }
 
