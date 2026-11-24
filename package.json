@@ -14,7 +14,9 @@
   "dependencies": {
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "spessasynth_lib": "^4.4.10"
+    "spessasynth_core": "^4.4.12",
+    "spessasynth_lib": "^4.4.10",
+    "wasm-media-encoders": "^0.7.0"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

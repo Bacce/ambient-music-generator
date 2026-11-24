@@ -1,4 +1,5 @@
 import { Sequencer, WorkletSynthesizer } from "spessasynth_lib";
+import { assetUrl } from "./assets.ts";
 import type { AmbientSequence } from "./midigen.ts";
 
 export interface PlaybackHandle {
@@ -25,10 +26,6 @@ let volume = 1;
 function clampVolume(value: number): number {
     if (!Number.isFinite(value)) return 1;
     return Math.min(MAX_VOLUME, Math.max(MIN_VOLUME, value));
-}
-
-function assetUrl(path: string): string {
-    return `${import.meta.env.BASE_URL}${path}`;
 }
 
 async function createEngine(): Promise<PlaybackEngine> {

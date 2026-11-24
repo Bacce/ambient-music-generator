@@ -30,6 +30,8 @@ import {
   setPlaybackVolume,
   type PlaybackHandle,
 } from "./service/midiPlayback.ts";
+import { renderMidiToBuffer } from "./service/midiRender.ts";
+import { encodeMp3 } from "./service/mp3.ts";
 import { PianoRoll } from "./PianoRoll.tsx";
 
 const KEYS: KeyName[] = ["C", "D", "Eb", "F", "G", "A", "Bb"];
@@ -82,6 +84,25 @@ function readDraft(drafts: Drafts, field: NumberField, label: string): number {
   return value;
 }
 
+function generatedFilename(generated: GeneratedMidi, extension: string): string {
+  return (
+    `ambient-${generated.options.style}-${generated.options.key}-` +
+    `${generated.options.bpm}bpm-seed${generated.sequence.seed}.${extension}`
+  );
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 export const App = () => {
   const [options, setOptions] = useState<AmbientMidiOptions>(INITIAL_OPTIONS);
   const [drafts, setDrafts] = useState<Drafts>(INITIAL_DRAFTS);
@@ -92,14 +113,22 @@ export const App = () => {
   const [error, setError] = useState<string | null>(null);
   const [volume, setVolume] = useState(1);
   const [instrumentQuery, setInstrumentQuery] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportPhase, setExportPhase] = useState<"rendering" | "encoding">(
+    "rendering",
+  );
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const playback = useRef<PlaybackHandle | null>(null);
   const playbackToken = useRef(0);
   const starting = useRef(false);
   const toggleRef = useRef<() => void>(() => {});
+  const exportToken = useRef(0);
 
   useEffect(() => () => {
     playbackToken.current += 1;
+    exportToken.current += 1;
     playback.current?.stop();
   }, []);
 
@@ -287,25 +316,54 @@ export const App = () => {
   const download = () => {
     if (!generated) return;
 
-    const url = URL.createObjectURL(
-      new Blob([generated.bytes], { type: "audio/midi" })
+    downloadBlob(
+      new Blob([generated.bytes], { type: "audio/midi" }),
+      generatedFilename(generated, "mid"),
     );
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download =
-      `ambient-${generated.options.style}-${generated.options.key}-` +
-      `${generated.options.bpm}bpm-seed${generated.sequence.seed}.mid`;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   const totalSeconds = generated
     ? generated.sequence.totalTicks * 60 /
       (generated.sequence.bpm * generated.sequence.ticksPerBeat)
     : 0;
+
+  const exportMp3 = async () => {
+    if (!generated || isExporting) return;
+
+    const token = ++exportToken.current;
+    const piece = generated;
+    const pieceSeconds = totalSeconds;
+
+    setIsExporting(true);
+    setExportPhase("rendering");
+    setExportProgress(0);
+    setExportError(null);
+
+    try {
+      const buffer = await renderMidiToBuffer(piece.bytes, pieceSeconds);
+
+      if (token !== exportToken.current) return;
+
+      setExportPhase("encoding");
+
+      const blob = await encodeMp3(buffer, ratio => {
+        if (token === exportToken.current) setExportProgress(ratio);
+      });
+
+      if (token !== exportToken.current) return;
+
+      downloadBlob(blob, generatedFilename(piece, "mp3"));
+      setExportProgress(1);
+    } catch (reason) {
+      if (token === exportToken.current) {
+        setExportError(
+          reason instanceof Error ? reason.message : String(reason),
+        );
+      }
+    } finally {
+      if (token === exportToken.current) setIsExporting(false);
+    }
+  };
   const melodicCount = options.instruments.filter(
     instrument => instrument !== "drums"
   ).length;
@@ -591,7 +649,38 @@ export const App = () => {
               {isPreparing ? "Loading…" : isPlaying ? "Stop" : "Listen"}
             </button>
             <button type="button" onClick={download}>Download MIDI</button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => void exportMp3()}
+              disabled={isExporting}
+            >
+              {isExporting ? "Exporting…" : "Download MP3"}
+            </button>
           </div>
+
+          {isExporting && (
+            <div className="progress-row" role="status">
+              {exportPhase === "rendering"
+                ? <progress aria-label="MP3 export progress" />
+                : (
+                  <progress
+                    max={100}
+                    value={exportProgress * 100}
+                    aria-label="MP3 export progress"
+                  />
+                )}
+              <span>
+                {exportPhase === "rendering"
+                  ? "Rendering audio…"
+                  : `Encoding MP3… ${Math.round(exportProgress * 100)}%`}
+              </span>
+            </div>
+          )}
+
+          {exportError && (
+            <p className="error" role="alert">{exportError}</p>
+          )}
 
           <div className="volume-row">
             <label className="volume-field">

@@ -22,6 +22,8 @@ previews them with the General MIDI soundfont, and downloads a `.mid` file.
 - **Arrangement** — parts enter in layers, energy shapes the intro/outro, and
   the final bar resolves to the tonic before fading out.
 - **Live preview** — piano roll, realtime playback, progress and volume.
+- **MIDI and MP3 download** — the generated piece can be saved as `.mid` or
+  rendered offline to a 192 kbps `.mp3`, including a 2 s reverb tail.
 
 ## Development
 
@@ -33,5 +35,11 @@ npm run preview  # serve the production build
 npm run lint
 ```
 
-Playback uses `spessasynth_lib` with `GeneralUserGS.sf3`; the worklet processor
-and soundfont are synced into `public/` by `scripts/sync-spessasynth.mjs`.
+Playback uses `spessasynth_lib` with `GeneralUserGS.sf3`; the worklet processor,
+soundfont and MP3 encoder wasm are synced into `public/` by
+`scripts/sync-spessasynth.mjs`.
+
+MP3 export renders the piece offline with `OfflineAudioContext` and encodes it
+with `wasm-media-encoders`. Rendering keeps the whole stereo PCM buffer in
+memory (~353 KB per second), so a 10-minute piece needs about 212 MB; mobile
+browsers may not handle the longest exports.
