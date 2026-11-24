@@ -123,7 +123,7 @@ export const App = () => {
   const playback = useRef<PlaybackHandle | null>(null);
   const playbackToken = useRef(0);
   const starting = useRef(false);
-  const toggleRef = useRef<() => void>(() => {});
+  const toggleRef = useRef<() => void>(() => { });
   const exportToken = useRef(0);
 
   useEffect(() => () => {
@@ -324,7 +324,7 @@ export const App = () => {
 
   const totalSeconds = generated
     ? generated.sequence.totalTicks * 60 /
-      (generated.sequence.bpm * generated.sequence.ticksPerBeat)
+    (generated.sequence.bpm * generated.sequence.ticksPerBeat)
     : 0;
 
   const exportMp3 = async () => {
@@ -655,7 +655,7 @@ export const App = () => {
               onClick={() => void exportMp3()}
               disabled={isExporting}
             >
-              {isExporting ? "Exporting…" : "Download as MP3"}
+              {isExporting ? "Exporting…" : "Convert and Download as MP3"}
             </button>
           </div>
 
