@@ -242,6 +242,36 @@ progress:focus-visible {
   background: var(--surface-soft);
 }
 
+.volume-row {
+  display: flex;
+  justify-content: center;
+}
+
+.volume-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 20rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.volume-field input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.volume-value {
+  min-width: 3.2em;
+  text-align: right;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
 .progress-row {
   display: flex;
   align-items: center;

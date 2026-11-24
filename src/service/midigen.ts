@@ -70,7 +70,7 @@ const MOOD_PROFILES: Record<Mood, MoodProfile> = {
         melodyChance: 0.55,
         melodyNotes: [1, 2],
         melodyLengths: [1, 1.5, 2],
-        melodyVelocity: 40,
+        melodyVelocity: 64,
         musicboxChance: 0.35,
         reverb: 100,
     },
@@ -86,7 +86,7 @@ const MOOD_PROFILES: Record<Mood, MoodProfile> = {
         melodyChance: 0.75,
         melodyNotes: [2, 3],
         melodyLengths: [0.5, 1, 1.5, 2],
-        melodyVelocity: 36,
+        melodyVelocity: 58,
         musicboxChance: 0.55,
         reverb: 118,
     },
@@ -102,7 +102,7 @@ const MOOD_PROFILES: Record<Mood, MoodProfile> = {
         melodyChance: 0.7,
         melodyNotes: [2, 3],
         melodyLengths: [1, 1.5, 2],
-        melodyVelocity: 42,
+        melodyVelocity: 66,
         musicboxChance: 0.4,
         reverb: 105,
     },
@@ -118,7 +118,7 @@ const MOOD_PROFILES: Record<Mood, MoodProfile> = {
         melodyChance: 0.5,
         melodyNotes: [1, 2],
         melodyLengths: [1.5, 2],
-        melodyVelocity: 32,
+        melodyVelocity: 54,
         musicboxChance: 0.25,
         reverb: 120,
     },
@@ -663,7 +663,7 @@ export function composeAmbientSequence(
 
         if (instrument === "pad") {
             // Tonic pedal under the whole piece.
-            addNote(track, channel, 36 + keyRoot, 0, totalTicks, 16, spans);
+            addNote(track, channel, 36 + keyRoot, 0, totalTicks, 40, spans);
         }
 
         for (let bar = 0; bar < bars; bar++) {
@@ -698,7 +698,7 @@ export function composeAmbientSequence(
                         noteStart,
                         TICK_RATE * (isBassBeat ? 1.8 : 1.5),
                         clamp(
-                            44 + (beat === 0 ? 6 : 0) + jitter(random, 4),
+                            68 + (beat === 0 ? 6 : 0) + jitter(random, 4),
                             20,
                             80,
                         ),
@@ -734,7 +734,7 @@ export function composeAmbientSequence(
                         pitch,
                         start,
                         BAR * 0.96,
-                        clamp(25 + jitter(random, 3), 12, 50),
+                        clamp(48 + jitter(random, 3), 12, 60),
                         spans,
                     );
                 }
@@ -750,7 +750,7 @@ export function composeAmbientSequence(
                         pitch,
                         start,
                         BAR * 0.97,
-                        clamp(30 + jitter(random, 3), 15, 55),
+                        clamp(52 + jitter(random, 3), 15, 65),
                         spans,
                     );
                 }
@@ -777,7 +777,7 @@ export function composeAmbientSequence(
                         TICK_RATE * 1.5,
                         start + BAR - noteStart,
                     ),
-                    34 + jitter(random, 4),
+                    58 + jitter(random, 4),
                     spans,
                 );
             }

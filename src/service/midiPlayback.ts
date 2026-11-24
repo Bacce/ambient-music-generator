@@ -17,6 +17,15 @@ interface PlaybackEngine {
 const PROCESSOR_URL = "spessasynth_processor.min.js";
 const SOUNDFONT_URL = "soundfonts/GeneralUserGS.sf3";
 const LOAD_TIMEOUT_MS = 15000;
+const MIN_VOLUME = 0;
+const MAX_VOLUME = 2;
+
+let volume = 1;
+
+function clampVolume(value: number): number {
+    if (!Number.isFinite(value)) return 1;
+    return Math.min(MAX_VOLUME, Math.max(MIN_VOLUME, value));
+}
 
 function assetUrl(path: string): string {
     return `${import.meta.env.BASE_URL}${path}`;
@@ -43,16 +52,27 @@ async function createEngine(): Promise<PlaybackEngine> {
         "generaluser",
     );
     await synth.isReady;
+    synth.setSystemParameter("gain", volume);
     await context.resume();
 
-    return {
+    const created: PlaybackEngine = {
         context,
         synth,
         sequencer: new Sequencer(synth, { skipToFirstNoteOn: true }),
     };
+
+    engine = created;
+
+    return created;
 }
 
 let enginePromise: Promise<PlaybackEngine> | null = null;
+let engine: PlaybackEngine | null = null;
+
+export function setPlaybackVolume(next: number): void {
+    volume = clampVolume(next);
+    engine?.synth.setSystemParameter("gain", volume);
+}
 
 function getEngine(): Promise<PlaybackEngine> {
     if (!enginePromise) {

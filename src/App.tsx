@@ -15,7 +15,11 @@ import {
   type KeyName,
   type Mood,
 } from "./service/midigen.ts";
-import { playSequence, type PlaybackHandle } from "./service/midiPlayback.ts";
+import {
+  playSequence,
+  setPlaybackVolume,
+  type PlaybackHandle,
+} from "./service/midiPlayback.ts";
 import { PianoRoll } from "./PianoRoll.tsx";
 
 const KEYS: KeyName[] = ["C", "D", "Eb", "F", "G", "A", "Bb"];
@@ -84,6 +88,7 @@ export const App = () => {
   const [isPreparing, setIsPreparing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [volume, setVolume] = useState(1);
 
   const playback = useRef<PlaybackHandle | null>(null);
   const playbackToken = useRef(0);
@@ -107,6 +112,13 @@ export const App = () => {
     const field = event.target.name as NumberField;
 
     setDrafts(current => ({ ...current, [field]: event.target.value }));
+  };
+
+  const updateVolume = (event: ChangeEvent<HTMLInputElement>) => {
+    const next = Number(event.target.value) / 100;
+
+    setVolume(next);
+    setPlaybackVolume(next);
   };
 
   const toggleInstrument = (instrument: Instrument) => {
@@ -412,6 +424,23 @@ export const App = () => {
               {isPreparing ? "Loading…" : isPlaying ? "Stop" : "Listen"}
             </button>
             <button type="button" onClick={download}>Download MIDI</button>
+          </div>
+
+          <div className="volume-row">
+            <label className="volume-field">
+              <span>Volume</span>
+              <input
+                type="range"
+                min={0}
+                max={200}
+                step={5}
+                value={Math.round(volume * 100)}
+                onChange={updateVolume}
+              />
+              <span className="volume-value">
+                {Math.round(volume * 100)}%
+              </span>
+            </label>
           </div>
 
           {isPlaying && (
