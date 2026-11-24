@@ -118,14 +118,13 @@ export const App = () => {
     }));
   };
 
-  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const generate = (seedOverride?: number) => {
     stopPlayback();
 
     try {
       const duration = readDraft(drafts, "duration", "Duration");
       const bpm = readDraft(drafts, "bpm", "Tempo");
-      const seed = readDraft(drafts, "seed", "Seed");
+      const seed = seedOverride ?? readDraft(drafts, "seed", "Seed");
       const candidate: AmbientMidiOptions = {
         ...options,
         duration,
@@ -148,6 +147,11 @@ export const App = () => {
       setGenerated(null);
       setError(reason instanceof Error ? reason.message : String(reason));
     }
+  };
+
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    generate();
   };
 
   const togglePlayback = async () => {
@@ -236,11 +240,11 @@ export const App = () => {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [generated]);
 
-  const randomizeSeed = () => {
-    setDrafts(current => ({
-      ...current,
-      seed: String(Math.floor(Math.random() * 2 ** 32)),
-    }));
+  const randomizeAndGenerate = () => {
+    const seed = Math.floor(Math.random() * 2 ** 32);
+
+    setDrafts(current => ({ ...current, seed: String(seed) }));
+    generate(seed);
   };
 
   const download = () => {
@@ -335,28 +339,6 @@ export const App = () => {
                 ))}
               </select>
             </label>
-
-            <label className="field">
-              Seed
-              <span className="seed-control">
-                <input
-                  type="number"
-                  name="seed"
-                  inputMode="numeric"
-                  step={1}
-                  value={drafts.seed}
-                  onChange={updateNumber}
-                  title="Use -1 for a random seed"
-                />
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={randomizeSeed}
-                >
-                  Random
-                </button>
-              </span>
-            </label>
           </div>
         </fieldset>
 
@@ -380,7 +362,27 @@ export const App = () => {
         </fieldset>
 
         <div className="actions">
+          <label className="seed-field">
+            Seed
+            <input
+              type="number"
+              name="seed"
+              inputMode="numeric"
+              step={1}
+              value={drafts.seed}
+              onChange={updateNumber}
+              title="Use -1 for a random seed"
+            />
+          </label>
           <button type="submit" disabled={!canGenerate}>Generate</button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={randomizeAndGenerate}
+            disabled={!canGenerate}
+          >
+            Randomize &amp; Generate
+          </button>
         </div>
 
         {error && <p className="error" role="alert">{error}</p>}

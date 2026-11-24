@@ -106,7 +106,8 @@ form {
 }
 
 .field input,
-.field select {
+.field select,
+.seed-field input {
   width: 100%;
   font: inherit;
   font-weight: 400;
@@ -117,14 +118,15 @@ form {
   color: inherit;
 }
 
-.seed-control {
-  display: flex;
-  gap: 0.4rem;
+.seed-field {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
-.seed-control input {
-  min-width: 0;
-  flex: 1;
+.seed-field input {
+  width: 8.5rem;
 }
 
 .instrument-grid {
@@ -147,6 +149,7 @@ input[type="checkbox"] {
 .actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-end;
   justify-content: center;
   gap: 0.75rem;
   margin-top: 0.25rem;
