@@ -655,7 +655,7 @@ export const App = () => {
               onClick={() => void exportMp3()}
               disabled={isExporting}
             >
-              {isExporting ? "Exporting…" : "Download MP3"}
+              {isExporting ? "Exporting…" : "Download as MP3"}
             </button>
           </div>
 
