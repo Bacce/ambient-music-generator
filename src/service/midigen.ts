@@ -599,16 +599,26 @@ export function composeAmbientSequence(
         addEvent(track, 0, [0xb0 | channel, 10, mix.pan + 64], 0);
         addEvent(track, 0, [0xb0 | channel, 91, profile.reverb], 0);
 
-        if (totalTicks >= BAR * 2) {
-            // Fade the expression in over two bars and out over the last one.
-            addEvent(track, 0, [0xb0 | channel, 11, 0], 0);
-            addEvent(track, BAR * 2, [0xb0 | channel, 11, 100], 0);
-            addEvent(track, totalTicks - BAR, [0xb0 | channel, 11, 100], 0);
-        } else {
-            addEvent(track, 0, [0xb0 | channel, 11, 100], 0);
-        }
+        // Full expression immediately: a step to 0 at tick 0 would mute the
+        // first bars, since MIDI controllers do not interpolate.
+        addEvent(track, 0, [0xb0 | channel, 11, 100], 0);
 
-        addEvent(track, totalTicks, [0xb0 | channel, 11, 0], 0);
+        if (totalTicks >= BAR) {
+            // Ramp the expression down over the final bar in small steps.
+            const fadeStart = totalTicks - BAR;
+            const fadeSteps = 16;
+
+            for (let step = 0; step <= fadeSteps; step++) {
+                addEvent(
+                    track,
+                    fadeStart + BAR * step / fadeSteps,
+                    [0xb0 | channel, 11, Math.round(100 * (1 - step / fadeSteps))],
+                    0,
+                );
+            }
+        } else {
+            addEvent(track, totalTicks, [0xb0 | channel, 11, 0], 0);
+        }
 
         return track;
     }
