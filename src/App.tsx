@@ -128,21 +128,21 @@ function DieIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <rect
-        x="3.5"
-        y="3.5"
-        width="17"
-        height="17"
-        rx="4"
+        x="3"
+        y="3"
+        width="18"
+        height="18"
+        rx="4.5"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="2"
       />
       <g fill="currentColor">
-        <circle cx="8.3" cy="8.3" r="1.5" />
-        <circle cx="15.7" cy="8.3" r="1.5" />
-        <circle cx="12" cy="12" r="1.5" />
-        <circle cx="8.3" cy="15.7" r="1.5" />
-        <circle cx="15.7" cy="15.7" r="1.5" />
+        <circle cx="8" cy="8" r="2" />
+        <circle cx="16" cy="8" r="2" />
+        <circle cx="12" cy="12" r="2" />
+        <circle cx="8" cy="16" r="2" />
+        <circle cx="16" cy="16" r="2" />
       </g>
     </svg>
   );
