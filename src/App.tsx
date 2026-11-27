@@ -628,6 +628,29 @@ export const App = () => {
           <button type="submit" disabled={!canGenerate}>Generate</button>
         </div>
 
+        <div className="actions">
+          <label className="seed-field">
+            Seed
+            <input
+              type="number"
+              name="seed"
+              inputMode="numeric"
+              step={1}
+              value={drafts.seed}
+              onChange={updateNumber}
+              title="Use -1 for a random seed"
+            />
+          </label>
+          <button
+            type="button"
+            className="ghost"
+            onClick={randomizeSeed}
+            title="Set a new random seed without generating"
+          >
+            Randomize seed
+          </button>
+        </div>
+
         <fieldset className="panel">
           <legend>Piece</legend>
           <div className="field-grid">
@@ -869,28 +892,6 @@ export const App = () => {
           )}
         </fieldset>
 
-        <div className="actions">
-          <label className="seed-field">
-            Seed
-            <input
-              type="number"
-              name="seed"
-              inputMode="numeric"
-              step={1}
-              value={drafts.seed}
-              onChange={updateNumber}
-              title="Use -1 for a random seed"
-            />
-          </label>
-          <button
-            type="button"
-            className="ghost"
-            onClick={randomizeSeed}
-            title="Set a new random seed without generating"
-          >
-            Randomize seed
-          </button>
-        </div>
         </form>
 
         <aside className="output" aria-label="Generated piece">
