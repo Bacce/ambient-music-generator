@@ -108,6 +108,78 @@ function downloadBlob(blob: Blob, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+function PlayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M8 5.2v13.6L19 12z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function StopIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <rect x="6.5" y="6.5" width="11" height="11" rx="1.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <g fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="18" cy="5.5" r="2.5" />
+        <circle cx="6" cy="12" r="2.5" />
+        <circle cx="18" cy="18.5" r="2.5" />
+        <path d="M8.2 10.8l7.6-4M8.2 13.2l7.6 4" />
+      </g>
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M5 12.5l4.5 4.5L19 7"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SpeakerIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M4 9.5h3.5L12 5.8v12.4l-4.5-3.7H4z"
+        fill="currentColor"
+      />
+      {muted
+        ? (
+          <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M16 9.5l4 5M20 9.5l-4 5" />
+          </g>
+        )
+        : (
+          <g
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M15.5 9.2a4 4 0 010 5.6" />
+            <path d="M18 7a7.5 7.5 0 010 10" />
+          </g>
+        )}
+    </svg>
+  );
+}
+
 export const App = () => {
   const [sharedOptions] = useState(() =>
     readSharedOptions(window.location.search)
@@ -477,9 +549,16 @@ export const App = () => {
 
   return (
     <main>
-      <h1>Ambient Music Generator</h1>
+      <header className="app-header">
+        <h1>Ambient Music Generator</h1>
+        <p className="tagline">
+          Compose slow, layered ambient music in your browser, then play it,
+          download it, or share a link.
+        </p>
+      </header>
 
-      <form onSubmit={handleSubmit} noValidate>
+      <div className="layout">
+        <form className="config" onSubmit={handleSubmit} noValidate>
         <fieldset className="panel">
           <legend>Piece</legend>
           <div className="field-grid">
@@ -744,24 +823,25 @@ export const App = () => {
             Randomize &amp; Generate
           </button>
         </div>
+        </form>
 
-        {error && <p className="error" role="alert">{error}</p>}
-      </form>
-
-      {generated && !error && (
-        <section className="result" aria-label="Generated piece">
-          <div className="result-head">
-            <p className="ready" role="status">
-              {Math.round(totalSeconds)}s · {generated.options.key} ·{" "}
-              {generated.options.bpm} BPM · {styleLabel(generated.options.style)}
-              {" · "}{moodLabel(generated.options.mood)}
-              {" · "}{generated.options.variation}% variation
-              {generated.options.rhythm ? " · rhythm" : ""}
-              {generated.options.randomStops ? " · stops" : ""}
-              {" "}(seed {generated.sequence.seed})
-            </p>
-            <span className="meta">{formatBytes(generated.bytes.length)} MIDI</span>
-          </div>
+        <aside className="output" aria-label="Generated piece">
+          {generated ? (
+            <section className="result">
+              <div className="result-head">
+                <p className="ready" role="status">
+                  {Math.round(totalSeconds)}s · {generated.options.key} ·{" "}
+                  {generated.options.bpm} BPM · {styleLabel(generated.options.style)}
+                  {" · "}{moodLabel(generated.options.mood)}
+                  {" · "}{generated.options.variation}% variation
+                  {generated.options.rhythm ? " · rhythm" : ""}
+                  {generated.options.randomStops ? " · stops" : ""}
+                  {" "}(seed {generated.sequence.seed})
+                </p>
+                <span className="meta">
+                  {formatBytes(generated.bytes.length)} MIDI
+                </span>
+              </div>
 
           <p className="meta instrumentation">
             {generated.options.instruments
@@ -775,33 +855,98 @@ export const App = () => {
 
           <PianoRoll sequence={generated.sequence} />
 
-          <div className="actions">
+          <div className="transport">
             <button
               type="button"
-              className="secondary"
+              className="icon-button play-button"
               onClick={() => void togglePlayback()}
               aria-pressed={isPlaying}
+              aria-label={
+                isPreparing
+                  ? "Loading preview"
+                  : isPlaying
+                  ? "Stop playback"
+                  : "Play preview"
+              }
+              title={isPlaying ? "Stop" : "Play"}
               disabled={isPreparing}
             >
-              {isPreparing ? "Loading…" : isPlaying ? "Stop" : "Listen"}
+              {isPlaying ? <StopIcon /> : <PlayIcon />}
             </button>
-            <button type="button" onClick={download}>Download MIDI</button>
+
+            <input
+              className="seek"
+              type="range"
+              min={0}
+              max={100}
+              step={0.1}
+              value={progress * 100}
+              onChange={seekPlayback}
+              onPointerDown={() => { seeking.current = true; }}
+              onPointerUp={() => { seeking.current = false; }}
+              onPointerCancel={() => { seeking.current = false; }}
+              onLostPointerCapture={() => { seeking.current = false; }}
+              disabled={!isPlaying}
+              aria-label="Playback position"
+              aria-valuetext={`${formatClock(progress * totalSeconds)} of ${formatClock(totalSeconds)}`}
+            />
+
+            <span className="transport-time">
+              {formatClock(progress * totalSeconds)} / {formatClock(totalSeconds)}
+            </span>
+
             <button
               type="button"
-              className="secondary"
+              className="icon-button ghost-icon"
               onClick={() => void copyShareLink()}
+              aria-label="Copy share link"
+              title={shareStatus === "Share link copied." ? "Link copied" : "Copy share link"}
             >
-              Copy share link
+              {shareStatus === "Share link copied."
+                ? <CheckIcon />
+                : <ShareIcon />}
             </button>
+
+            <div className="volume-control">
+              <button
+                type="button"
+                className="icon-button ghost-icon"
+                aria-label={`Volume ${Math.round(volume * 100)}%`}
+                title="Volume"
+              >
+                <SpeakerIcon muted={volume === 0} />
+              </button>
+              <div className="volume-popover">
+                <span className="volume-popover-label">
+                  Volume
+                  <span>{Math.round(volume * 100)}%</span>
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={200}
+                  step={5}
+                  value={Math.round(volume * 100)}
+                  onChange={updateVolume}
+                  aria-label="Volume"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="result-actions">
+            <button type="button" onClick={download}>Download MIDI</button>
             <button
               type="button"
               className="secondary"
               onClick={() => void exportMp3()}
               disabled={isExporting}
             >
-              {isExporting ? "Exporting…" : "Convert and Download as MP3"}
+              {isExporting ? "Exporting…" : "Download MP3"}
             </button>
           </div>
+
+          {error && <p className="error" role="alert">{error}</p>}
 
           {shareStatus && (
             <p className="hint share-status" role="status">{shareStatus}</p>
@@ -830,48 +975,19 @@ export const App = () => {
             <p className="error" role="alert">{exportError}</p>
           )}
 
-          <div className="volume-row">
-            <label className="volume-field">
-              <span>Volume</span>
-              <input
-                type="range"
-                min={0}
-                max={200}
-                step={5}
-                value={Math.round(volume * 100)}
-                onChange={updateVolume}
-              />
-              <span className="volume-value">
-                {Math.round(volume * 100)}%
-              </span>
-            </label>
-          </div>
-
-          {isPlaying && (
-            <div className="progress-row">
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={0.1}
-                value={progress * 100}
-                onChange={seekPlayback}
-                onPointerDown={() => { seeking.current = true; }}
-                onPointerUp={() => { seeking.current = false; }}
-                onPointerCancel={() => { seeking.current = false; }}
-                onLostPointerCapture={() => { seeking.current = false; }}
-                aria-label="Playback position"
-                aria-valuetext={`${formatClock(progress * totalSeconds)} of ${formatClock(totalSeconds)}`}
-              />
-              <span>
-                {formatClock(progress * totalSeconds)} / {formatClock(totalSeconds)}
-              </span>
-            </div>
-          )}
-
           <p className="hint">Press Space to play or stop.</p>
         </section>
-      )}
+          ) : (
+            <div className="output-empty">
+              <p className="empty-title">Nothing generated yet</p>
+              <p className="hint">
+                Choose your settings, then press “Generate” to compose a piece.
+              </p>
+              {error && <p className="error" role="alert">{error}</p>}
+            </div>
+          )}
+        </aside>
+      </div>
     </main>
   );
 };
