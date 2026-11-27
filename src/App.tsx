@@ -124,6 +124,30 @@ function StopIcon() {
   );
 }
 
+function DieIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <rect
+        x="3.5"
+        y="3.5"
+        width="17"
+        height="17"
+        rx="4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <g fill="currentColor">
+        <circle cx="8.3" cy="8.3" r="1.5" />
+        <circle cx="15.7" cy="8.3" r="1.5" />
+        <circle cx="12" cy="12" r="1.5" />
+        <circle cx="8.3" cy="15.7" r="1.5" />
+        <circle cx="15.7" cy="15.7" r="1.5" />
+      </g>
+    </svg>
+  );
+}
+
 function ShareIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -576,10 +600,11 @@ export const App = () => {
         <div className="actions sticky-actions">
           <button
             type="button"
-            className="secondary"
+            className="secondary lucky-button"
             onClick={feelingLucky}
             title="Randomize key, style, mood, instruments, variation and seed without generating. Duration and tempo stay as set."
           >
+            <DieIcon />
             Feeling lucky
           </button>
           <button type="submit" disabled={!canGenerate}>Generate</button>

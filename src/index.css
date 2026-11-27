@@ -380,6 +380,20 @@ button.secondary:hover:not(:disabled) {
   background: var(--surface-soft);
 }
 
+button.lucky-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+button.lucky-button svg {
+  display: block;
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
 button.ghost {
   padding: 0.5rem 0.9rem;
   background: transparent;
