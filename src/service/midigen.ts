@@ -2,11 +2,11 @@ const TICK_RATE = 480;
 const BEATS_PER_BAR = 4;
 const BAR = TICK_RATE * BEATS_PER_BAR;
 const BAR_SNAP_TICKS = 16;
-const MAX_DURATION_SECONDS = 600;
+export const MAX_DURATION_SECONDS = 600;
 export const MAX_MELODIC_INSTRUMENTS = 15;
 const DRUM_CHANNEL = 9;
 
-const KEYS = {
+export const KEYS = {
     C: 0, D: 2, Eb: 3, F: 5, G: 7, A: 9, Bb: 10,
 };
 

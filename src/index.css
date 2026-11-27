@@ -474,6 +474,11 @@ progress:focus-visible {
   text-align: center;
 }
 
+.result > .share-status {
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
 @media (max-width: 32rem) {
   main {
     padding: 2rem 1rem 3rem;

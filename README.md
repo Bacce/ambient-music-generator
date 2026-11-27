@@ -28,6 +28,9 @@ previews them with the General MIDI soundfont, and downloads a `.mid` file.
   the final bar resolves to the tonic before fading out. Completely empty bars
   at the start of the piece are trimmed.
 - **Live preview** — piano roll, realtime playback, progress and volume.
+- **Shareable links** — the configuration and seed live in the URL. Copy the
+  share link from the result, and opening it restores the settings and
+  regenerates the same piece automatically.
 - **MIDI and MP3 download** — the generated piece can be saved as `.mid` or
   rendered offline to a 192 kbps `.mp3`, including a 2 s reverb tail.
 
