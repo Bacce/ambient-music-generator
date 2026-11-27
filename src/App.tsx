@@ -451,6 +451,24 @@ export const App = () => {
               />
             </label>
           </div>
+
+          <label className="field-toggle">
+            <input
+              type="checkbox"
+              checked={options.rhythm}
+              onChange={event => setOptions(current => ({
+                ...current,
+                rhythm: event.target.checked,
+              }))}
+            />
+            <span>
+              Add rhythm
+              <small>
+                Keeps the slow background but adds a drum groove and a
+                rhythmic middle passage.
+              </small>
+            </span>
+          </label>
         </fieldset>
 
         <fieldset className="panel">
@@ -640,6 +658,7 @@ export const App = () => {
               {generated.options.bpm} BPM · {styleLabel(generated.options.style)}
               {" · "}{moodLabel(generated.options.mood)}
               {" · "}{generated.options.variation}% variation
+              {generated.options.rhythm ? " · rhythm" : ""}
               {" "}(seed {generated.sequence.seed})
             </p>
             <span className="meta">{formatBytes(generated.bytes.length)} MIDI</span>
@@ -649,6 +668,10 @@ export const App = () => {
             {generated.options.instruments
               .map(instrumentLabel)
               .join(" · ")}
+            {generated.options.rhythm
+              && !generated.options.instruments.includes("drums")
+              ? " · Drum Kit (rhythm)"
+              : ""}
           </p>
 
           <PianoRoll sequence={generated.sequence} />

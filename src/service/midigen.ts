@@ -836,6 +836,7 @@ export interface AmbientMidiOptions {
     variation: number;
     instruments: Instrument[];
     seed: number;
+    rhythm: boolean;
 }
 
 export type AmbientMidiProps = Partial<AmbientMidiOptions>;
@@ -849,6 +850,7 @@ export const AMBIENT_MIDI_DEFAULTS: AmbientMidiOptions = {
     variation: 50,
     instruments: [...DEFAULT_INSTRUMENTS],
     seed: 12345,
+    rhythm: false,
 };
 
 export interface MidiEvent {
@@ -1347,6 +1349,7 @@ export function composeAmbientSequence(
         variation,
         instruments,
         seed,
+        rhythm,
     } = settings;
 
     if (!Number.isFinite(duration) || duration <= 0)
@@ -1372,6 +1375,9 @@ export function composeAmbientSequence(
 
     if (!Number.isInteger(seed))
         throw new Error("seed must be an integer");
+
+    if (typeof rhythm !== "boolean")
+        throw new Error("rhythm must be a boolean");
 
     if (!Array.isArray(instruments) || instruments.length === 0)
         throw new Error("at least one instrument is required");
@@ -1407,6 +1413,13 @@ export function composeAmbientSequence(
     const instrumentDefs = instruments.map(
         instrument => INSTRUMENT_BY_ID.get(instrument) as InstrumentDef
     );
+
+    // The rhythm toggle layers a beat on top of the selected instruments
+    // without changing the user's instrument list.
+    if (rhythm && !instrumentDefs.some(instrument => instrument.role === "drums")) {
+        instrumentDefs.push(DRUM_KIT);
+    }
+
     const roles = new Set(instrumentDefs.map(instrument => instrument.role));
     const hasLead = roles.has("lead");
     const hasBass = roles.has("bass");
@@ -1559,6 +1572,12 @@ export function composeAmbientSequence(
     const outroBars = bars >= 6 ? Math.min(2, Math.floor(bars * 0.08)) : 0;
     const bodyStart = introBars;
     const bodyEnd = Math.max(bodyStart + 1, bars - outroBars);
+    const rhythmVerseStart = bodyStart
+        + Math.floor((bodyEnd - bodyStart) * 0.2);
+    const rhythmVerseEnd = Math.max(
+        rhythmVerseStart + 1,
+        bodyStart + Math.floor((bodyEnd - bodyStart) * 0.75),
+    );
 
     function roleStart(role: Role): number {
         const lastBar = Math.max(0, bars - 1);
@@ -2133,8 +2152,9 @@ export function composeAmbientSequence(
 
             if (role === "drums") {
                 const patternId = styleProfile.drumPattern ?? "soft";
+                const base = DRUM_PATTERNS[patternId];
 
-                for (const hit of DRUM_PATTERNS[patternId]) {
+                for (const hit of base) {
                     // Crashes mark four-bar phrases instead of every bar.
                     if (
                         (hit.note === DRUM_NOTE.crash
@@ -2155,6 +2175,54 @@ export function composeAmbientSequence(
                         velocity(hit.velocity, energy, 6),
                         spans,
                     );
+                }
+
+                // The rhythm toggle thickens the middle of the piece into an
+                // actual verse: offbeat hats plus a backbeat where the style
+                // has none.
+                if (
+                    rhythm
+                    && bars >= 6
+                    && bar >= rhythmVerseStart
+                    && bar < rhythmVerseEnd
+                ) {
+                    for (const step of [2, 6, 10, 14]) {
+                        if (base.some(hit =>
+                            hit.note === DRUM_NOTE.closedHat && hit.step === step
+                        )) {
+                            continue;
+                        }
+
+                        addNote(
+                            track,
+                            channel,
+                            DRUM_NOTE.closedHat,
+                            beatTick(bar, step * 0.25),
+                            TICK_RATE * 0.18,
+                            velocity(34, energy, 4),
+                            spans,
+                        );
+                    }
+
+                    for (const step of [4, 12]) {
+                        if (base.some(hit =>
+                            (hit.note === DRUM_NOTE.snare
+                                || hit.note === DRUM_NOTE.clap)
+                            && hit.step === step
+                        )) {
+                            continue;
+                        }
+
+                        addNote(
+                            track,
+                            channel,
+                            DRUM_NOTE.snare,
+                            beatTick(bar, step * 0.25),
+                            TICK_RATE * 0.2,
+                            velocity(58, energy, 5),
+                            spans,
+                        );
+                    }
                 }
 
                 // Small fill at the end of each eight-bar phrase.

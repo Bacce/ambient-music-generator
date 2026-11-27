@@ -19,6 +19,9 @@ previews them with the General MIDI soundfont, and downloads a `.mid` file.
   melodic percussion and drums.
 - **Variation control** — humanizes timing and velocity, adds ornaments,
   phrase fills, dropouts and octave doublings.
+- **Optional rhythm** — off by default for slow, beatless background music;
+  the toggle layers a style-appropriate drum groove and a rhythmic middle
+  passage on top of the selected instruments.
 - **Arrangement** — parts enter in layers, energy shapes the intro/outro, and
   the final bar resolves to the tonic before fading out.
 - **Live preview** — piano roll, realtime playback, progress and volume.
