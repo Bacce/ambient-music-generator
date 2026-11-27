@@ -674,7 +674,7 @@ export const App = () => {
         <section className="result" aria-label="Generated piece">
           <div className="result-head">
             <p className="ready" role="status">
-              {generated.options.duration}s · {generated.options.key} ·{" "}
+              {Math.round(totalSeconds)}s · {generated.options.key} ·{" "}
               {generated.options.bpm} BPM · {styleLabel(generated.options.style)}
               {" · "}{moodLabel(generated.options.mood)}
               {" · "}{generated.options.variation}% variation

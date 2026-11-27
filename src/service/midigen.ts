@@ -1,6 +1,7 @@
 const TICK_RATE = 480;
 const BEATS_PER_BAR = 4;
 const BAR = TICK_RATE * BEATS_PER_BAR;
+const BAR_SNAP_TICKS = 16;
 const MAX_DURATION_SECONDS = 600;
 export const MAX_MELODIC_INSTRUMENTS = 15;
 const DRUM_CHANNEL = 9;
@@ -924,6 +925,51 @@ function cutOverlaps(spans: readonly NoteSpan[]): void {
 }
 
 type Random = () => number;
+
+/**
+ * Drop whole bars of silence at the start of the piece. Setup, controller and
+ * meta events stay at tick 0; musical events shift left and the duration
+ * shrinks, so a piece whose first instrument enters late starts immediately.
+ */
+function trimLeadingEmptyBars(
+    tracks: MidiEvent[][],
+    totalTicks: number,
+    barTicks: number,
+): number {
+    let firstNoteTick = Infinity;
+
+    for (const track of tracks) {
+        for (const event of track) {
+            if (
+                event.data.length > 2
+                && (event.data[0] & 0xf0) === 0x90
+                && event.data[2] > 0
+            ) {
+                firstNoteTick = Math.min(firstNoteTick, event.tick);
+            }
+        }
+    }
+
+    if (!Number.isFinite(firstNoteTick)) return totalTicks;
+
+    // Humanization can pull a downbeat a few ticks into the previous bar.
+    // Treat that as the downbeat bar so the first real bar is not left behind.
+    const maxShift = Math.floor((totalTicks - 1) / barTicks) * barTicks;
+    const shift = Math.min(
+        maxShift,
+        Math.floor((firstNoteTick + BAR_SNAP_TICKS) / barTicks) * barTicks,
+    );
+
+    if (shift <= 0) return totalTicks;
+
+    for (const track of tracks) {
+        for (const event of track) {
+            event.tick = Math.max(0, event.tick - shift);
+        }
+    }
+
+    return totalTicks - shift;
+}
 
 function createRandom(seed: number): Random {
     let state = seed >>> 0;
@@ -2288,7 +2334,7 @@ export function composeAmbientSequence(
 
     return {
         tracks,
-        totalTicks,
+        totalTicks: trimLeadingEmptyBars(tracks, totalTicks, BAR),
         ticksPerBeat: TICK_RATE,
         bpm,
         seed: resolvedSeed,

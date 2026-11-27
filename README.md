@@ -25,7 +25,8 @@ previews them with the General MIDI soundfont, and downloads a `.mid` file.
 - **Random stops** — optionally rests a sustained pad, texture or bass for a
   bar at a time, always on a bar line, to open small gaps in the texture.
 - **Arrangement** — parts enter in layers, energy shapes the intro/outro, and
-  the final bar resolves to the tonic before fading out.
+  the final bar resolves to the tonic before fading out. Completely empty bars
+  at the start of the piece are trimmed.
 - **Live preview** — piano roll, realtime playback, progress and volume.
 - **MIDI and MP3 download** — the generated piece can be saved as `.mid` or
   rendered offline to a 192 kbps `.mp3`, including a 2 s reverb tail.
