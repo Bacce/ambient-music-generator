@@ -148,6 +148,24 @@ function DieIcon() {
   );
 }
 
+function DownloadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <g
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 4v10.5" />
+        <path d="M7.5 10.5L12 15l4.5-4.5" />
+        <path d="M5 19h14" />
+      </g>
+    </svg>
+  );
+}
+
 function ShareIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -600,7 +618,7 @@ export const App = () => {
         <div className="actions sticky-actions">
           <button
             type="button"
-            className="secondary lucky-button"
+            className="secondary with-icon"
             onClick={feelingLucky}
             title="Randomize key, style, mood, instruments, variation and seed without generating. Duration and tempo stay as set."
           >
@@ -984,18 +1002,6 @@ export const App = () => {
             </div>
           </div>
 
-          <div className="result-actions">
-            <button type="button" onClick={download}>Download MIDI</button>
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => void exportMp3()}
-              disabled={isExporting}
-            >
-              {isExporting ? "Exporting…" : "Download MP3"}
-            </button>
-          </div>
-
           {error && <p className="error" role="alert">{error}</p>}
 
           {shareStatus && (
@@ -1025,7 +1031,6 @@ export const App = () => {
             <p className="error" role="alert">{exportError}</p>
           )}
 
-          <p className="hint">Press Space to play or stop.</p>
         </section>
           ) : (
             <div className="output-empty">
