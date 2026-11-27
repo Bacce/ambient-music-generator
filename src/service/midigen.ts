@@ -837,6 +837,7 @@ export interface AmbientMidiOptions {
     instruments: Instrument[];
     seed: number;
     rhythm: boolean;
+    randomStops: boolean;
 }
 
 export type AmbientMidiProps = Partial<AmbientMidiOptions>;
@@ -851,6 +852,7 @@ export const AMBIENT_MIDI_DEFAULTS: AmbientMidiOptions = {
     instruments: [...DEFAULT_INSTRUMENTS],
     seed: 12345,
     rhythm: false,
+    randomStops: false,
 };
 
 export interface MidiEvent {
@@ -1350,6 +1352,7 @@ export function composeAmbientSequence(
         instruments,
         seed,
         rhythm,
+        randomStops,
     } = settings;
 
     if (!Number.isFinite(duration) || duration <= 0)
@@ -1378,6 +1381,9 @@ export function composeAmbientSequence(
 
     if (typeof rhythm !== "boolean")
         throw new Error("rhythm must be a boolean");
+
+    if (typeof randomStops !== "boolean")
+        throw new Error("randomStops must be a boolean");
 
     if (!Array.isArray(instruments) || instruments.length === 0)
         throw new Error("at least one instrument is required");
@@ -1579,6 +1585,33 @@ export function composeAmbientSequence(
         bodyStart + Math.floor((bodyEnd - bodyStart) * 0.75),
     );
 
+    // Long-running parts occasionally rest for a whole bar. The rest lands on
+    // a bar line, never on the first body bar or the final resolution.
+    const stopBarsByInstrument = new Map<string, Set<number>>();
+
+    if (randomStops) {
+        const longInstruments = instrumentDefs.filter(
+            instrument => instrument.role === "pad"
+                || instrument.role === "texture"
+                || instrument.role === "bass"
+        );
+        const stopChance = 0.04 + variation * 0.0016;
+        const stopRandom = createRandom(resolvedSeed ^ 0x9e3779b9);
+
+        if (longInstruments.length > 0) {
+            for (let bar = bodyStart + 1; bar < bodyEnd - 1; bar++) {
+                if (stopRandom() >= stopChance) continue;
+
+                const instrument = choose(stopRandom, longInstruments);
+                const stops = stopBarsByInstrument.get(instrument.id)
+                    ?? new Set<number>();
+
+                stops.add(bar);
+                stopBarsByInstrument.set(instrument.id, stops);
+            }
+        }
+    }
+
     function roleStart(role: Role): number {
         const lastBar = Math.max(0, bars - 1);
 
@@ -1737,12 +1770,14 @@ export function composeAmbientSequence(
         const channel = role === "drums" ? DRUM_CHANNEL : allocateChannel();
         const track = makeTrack(instrument, channel);
         const spans: NoteSpan[] = [];
+        const stopBars = stopBarsByInstrument.get(instrument.id);
         let melodyAnchor: number | null = null;
 
         roleInstances.set(role, roleInstance + 1);
 
         for (let bar = 0; bar < bars; bar++) {
             if (!roleActive(role, bar)) continue;
+            if (stopBars?.has(bar)) continue;
 
             const start = bar * BAR;
             const energy = energyAt(bar);

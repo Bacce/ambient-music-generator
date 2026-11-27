@@ -452,23 +452,43 @@ export const App = () => {
             </label>
           </div>
 
-          <label className="field-toggle">
-            <input
-              type="checkbox"
-              checked={options.rhythm}
-              onChange={event => setOptions(current => ({
-                ...current,
-                rhythm: event.target.checked,
-              }))}
-            />
-            <span>
-              Add rhythm
-              <small>
-                Keeps the slow background but adds a drum groove and a
-                rhythmic middle passage.
-              </small>
-            </span>
-          </label>
+          <div className="field-toggles">
+            <label className="field-toggle">
+              <input
+                type="checkbox"
+                checked={options.rhythm}
+                onChange={event => setOptions(current => ({
+                  ...current,
+                  rhythm: event.target.checked,
+                }))}
+              />
+              <span>
+                Add rhythm
+                <small>
+                  Keeps the slow background but adds a drum groove and a
+                  rhythmic middle passage.
+                </small>
+              </span>
+            </label>
+
+            <label className="field-toggle">
+              <input
+                type="checkbox"
+                checked={options.randomStops}
+                onChange={event => setOptions(current => ({
+                  ...current,
+                  randomStops: event.target.checked,
+                }))}
+              />
+              <span>
+                Random stops
+                <small>
+                  Occasionally rests a pad, texture or bass for a bar on a
+                  bar line.
+                </small>
+              </span>
+            </label>
+          </div>
         </fieldset>
 
         <fieldset className="panel">
@@ -659,6 +679,7 @@ export const App = () => {
               {" · "}{moodLabel(generated.options.mood)}
               {" · "}{generated.options.variation}% variation
               {generated.options.rhythm ? " · rhythm" : ""}
+              {generated.options.randomStops ? " · stops" : ""}
               {" "}(seed {generated.sequence.seed})
             </p>
             <span className="meta">{formatBytes(generated.bytes.length)} MIDI</span>

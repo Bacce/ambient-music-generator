@@ -22,6 +22,8 @@ previews them with the General MIDI soundfont, and downloads a `.mid` file.
 - **Optional rhythm** — off by default for slow, beatless background music;
   the toggle layers a style-appropriate drum groove and a rhythmic middle
   passage on top of the selected instruments.
+- **Random stops** — optionally rests a sustained pad, texture or bass for a
+  bar at a time, always on a bar line, to open small gaps in the texture.
 - **Arrangement** — parts enter in layers, energy shapes the intro/outro, and
   the final bar resolves to the tonic before fading out.
 - **Live preview** — piano roll, realtime playback, progress and volume.
