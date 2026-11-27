@@ -895,6 +895,7 @@ export const App = () => {
 
         <aside className="output" aria-label="Generated piece">
           {generated ? (
+            <>
             <section className="result">
               <div className="result-head">
                 <p className="ready" role="status">
@@ -1008,30 +1009,50 @@ export const App = () => {
             <p className="hint share-status" role="status">{shareStatus}</p>
           )}
 
-          {isExporting && (
-            <div className="progress-row" role="status">
-              {exportPhase === "rendering"
-                ? <progress aria-label="MP3 export progress" />
-                : (
-                  <progress
-                    max={100}
-                    value={exportProgress * 100}
-                    aria-label="MP3 export progress"
-                  />
-                )}
-              <span>
-                {exportPhase === "rendering"
-                  ? "Rendering audio…"
-                  : `Encoding MP3… ${Math.round(exportProgress * 100)}%`}
-              </span>
-            </div>
-          )}
+          <p className="hint">Press Space to play or stop.</p>
+            </section>
 
-          {exportError && (
-            <p className="error" role="alert">{exportError}</p>
-          )}
+            <section className="result downloads" aria-label="Download">
+              <div className="result-actions">
+                <button type="button" className="with-icon" onClick={download}>
+                  <DownloadIcon />
+                  Download MIDI
+                </button>
+                <button
+                  type="button"
+                  className="secondary with-icon"
+                  onClick={() => void exportMp3()}
+                  disabled={isExporting}
+                >
+                  <DownloadIcon />
+                  {isExporting ? "Exporting…" : "Download MP3"}
+                </button>
+              </div>
 
-        </section>
+              {isExporting && (
+                <div className="progress-row" role="status">
+                  {exportPhase === "rendering"
+                    ? <progress aria-label="MP3 export progress" />
+                    : (
+                      <progress
+                        max={100}
+                        value={exportProgress * 100}
+                        aria-label="MP3 export progress"
+                      />
+                    )}
+                  <span>
+                    {exportPhase === "rendering"
+                      ? "Rendering audio…"
+                      : `Encoding MP3… ${Math.round(exportProgress * 100)}%`}
+                  </span>
+                </div>
+              )}
+
+              {exportError && (
+                <p className="error" role="alert">{exportError}</p>
+              )}
+            </section>
+            </>
           ) : (
             <div className="output-empty">
               <p className="empty-title">Nothing generated yet</p>
