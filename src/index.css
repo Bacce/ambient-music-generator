@@ -70,8 +70,8 @@ main {
 }
 
 .app-header {
-  margin-bottom: 2rem;
-  text-align: center;
+  margin-bottom: 0.25rem;
+  text-align: left;
 }
 
 h1 {
@@ -334,6 +334,20 @@ input[type="checkbox"] {
   justify-content: flex-start;
   gap: 0.75rem;
   margin-top: 0.25rem;
+}
+
+.actions.sticky-actions {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin-top: 0;
+  padding: 0.75rem 0;
+  background: var(--bg);
+}
+
+.actions.sticky-actions button {
+  flex: 1 1 0;
+  padding-inline: 1rem;
 }
 
 button {
